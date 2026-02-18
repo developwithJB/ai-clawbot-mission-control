@@ -4,6 +4,7 @@ import { EventTimeline } from "@/components/hq/EventTimeline";
 import { GitHubLivePanel } from "@/components/hq/GitHubLivePanel";
 import { RepoDependencyBoard } from "@/components/hq/RepoDependencyBoard";
 import { LiveOpsControls } from "@/components/hq/LiveOpsControls";
+import { OpsPulse } from "@/components/hq/OpsPulse";
 import { getLiveOpsSnapshot } from "@/lib/live";
 
 type Agent = {
@@ -261,6 +262,9 @@ export default async function Home() {
             </article>
           </div>
         </section>
+
+
+        <OpsPulse events={live.events} approvals={live.approvals} />
 
         <section className="grid gap-4 md:grid-cols-4">
           <Stat label="Execution Mode" value="Active Workflows" />
