@@ -7,6 +7,7 @@ import { LiveOpsControls } from "@/components/hq/LiveOpsControls";
 import { OpsPulse } from "@/components/hq/OpsPulse";
 import { PermissionsMatrix } from "@/components/hq/PermissionsMatrix";
 import { TaskOrchestratorCard } from "@/components/hq/TaskOrchestratorCard";
+import { PRReadinessBoard } from "@/components/hq/PRReadinessBoard";
 import { getLiveOpsSnapshot } from "@/lib/live";
 
 type Agent = {
@@ -385,6 +386,8 @@ export default async function Home() {
             </div>
           </article>
         </section>
+
+        <PRReadinessBoard prs={live.prReadiness} />
 
         <EventTimeline events={live.events} />
 
