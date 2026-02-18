@@ -131,6 +131,16 @@ export type WrenchTrigger = {
   lane: string;
 };
 
+export type StrategicDecisionInput = {
+  title: string;
+  tier: Tier;
+  risk: Risk;
+  hasTier1Backlog: boolean;
+  measurableOutcome: boolean;
+  touchesSensitiveSurface: boolean;
+  parallelEpics: number;
+};
+
 export function evaluateTierGuard(action: GovernanceAction, hasTier1Backlog: boolean): GovernanceDecision {
   if (hasTier1Backlog && action.tier === 3) {
     return {
@@ -162,6 +172,27 @@ export function detectWrenchTriggers(input: {
   }
   if (input.hasUnmeasurableFeature) {
     triggers.push({ reason: "Feature request missing measurable outcome", lane: "Compass" });
+  }
+
+  return triggers;
+}
+
+export function detectWrenchTriggersForStrategicDecision(input: StrategicDecisionInput): WrenchTrigger[] {
+  const baseTriggers = detectWrenchTriggers({
+    hasTier1Backlog: input.hasTier1Backlog,
+    proposesTier3: input.tier === 3,
+    touchesSensitiveSurface: input.touchesSensitiveSurface,
+    parallelEpics: input.parallelEpics,
+    hasUnmeasurableFeature: !input.measurableOutcome,
+  });
+
+  const triggers = [...baseTriggers];
+
+  if (input.risk === "High") {
+    triggers.push({
+      reason: `High-risk strategic decision requires CONTRA-1 Red Team Review (${input.title})`,
+      lane: "Compass → Wrench → Gatekeeper",
+    });
   }
 
   return triggers;

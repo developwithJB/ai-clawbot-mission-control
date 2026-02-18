@@ -119,6 +119,7 @@ Built for a 15-second scan:
 - `GET /api/approvals/:id`
 - `PATCH /api/approvals/:id`
 - `POST /api/asks/resolve`
+- `POST /api/policy/check` (now auto-triggers CONTRA-1 on risky strategic decisions)
 - `POST /api/telegram/notify`
 - `GET /api/telegram/feed`
 - `POST /api/web-search` (logs each search event with provider/query/timestamp)
