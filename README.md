@@ -89,7 +89,10 @@ Mission Control no longer writes operational state to `data/`.
 
 - `GET /api/events`
 - `GET /api/approvals`
+- `GET /api/approvals/:id`
 - `PATCH /api/approvals/:id`
+- `POST /api/telegram/notify`
+- `GET /api/telegram/feed`
 
 These routes support timeline visibility and governance workflows.
 

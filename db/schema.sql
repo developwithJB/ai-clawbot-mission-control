@@ -51,4 +51,18 @@ CREATE INDEX IF NOT EXISTS idx_approvals_status ON approvals(status);
 CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_events_approval_id ON events(approval_id);
 CREATE INDEX IF NOT EXISTS idx_repo_deps_from ON repository_dependencies(from_repo);
+CREATE TABLE IF NOT EXISTS telegram_outbox (
+  id TEXT PRIMARY KEY,
+  type TEXT NOT NULL CHECK (type IN ('alert', 'approval_requested', 'approval_decided', 'conflict', 'daily_pulse', 'wrench_alert')),
+  message TEXT NOT NULL,
+  meta_json TEXT,
+  status TEXT NOT NULL CHECK (status IN ('queued', 'sent', 'failed')) DEFAULT 'queued',
+  attempts INTEGER NOT NULL DEFAULT 0,
+  last_error TEXT,
+  created_at TEXT NOT NULL,
+  sent_at TEXT
+);
+
 CREATE INDEX IF NOT EXISTS idx_repo_deps_to ON repository_dependencies(to_repo);
+CREATE INDEX IF NOT EXISTS idx_outbox_created_at ON telegram_outbox(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_outbox_status ON telegram_outbox(status);

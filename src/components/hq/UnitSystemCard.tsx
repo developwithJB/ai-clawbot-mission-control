@@ -1,6 +1,6 @@
 import { UNIT_REGISTRY, APPROVAL_REQUIRED_ACTIONS, type UnitCode } from "@/lib/unit-governance";
 
-const unitOrder: UnitCode[] = ["PROD-1", "OPS-1", "ARCH-1", "ENG-1", "GOV-1", "REV-1", "GTM-1"];
+const unitOrder: UnitCode[] = ["PROD-1", "OPS-1", "ARCH-1", "ENG-1", "GOV-1", "REV-1", "GTM-1", "CONTRA-1"];
 
 export function UnitSystemCard() {
   return (

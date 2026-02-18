@@ -5,6 +5,8 @@ import { readRepoGraph } from "@/lib/repositories";
 import { readApprovals } from "@/lib/approvals";
 import { rankTasks, readTasks } from "@/lib/tasks";
 import { scorePrReadiness } from "@/lib/pr-risk";
+import { detectWrenchTriggers } from "@/lib/unit-governance";
+import { listRecentTelegramOutbox } from "@/lib/services/telegramService";
 
 type EventItem = {
   id: string;
@@ -33,7 +35,7 @@ export type LiveOpsSnapshot = {
     status: "ok" | "degraded";
     error?: string;
   };
-  approvals: { id: string; item: string; reason: string; level: "High" | "Medium"; status: "pending" | "approved" | "rejected" }[];
+  approvals: { id: string; item: string; reason: string; level: "High" | "Medium"; status: "pending" | "approved" | "rejected"; version: number }[];
   shippedToday: { who: string; summary: string; when: string }[];
   top3: { title: string; tier: "Tier 1" | "Tier 2" | "Tier 3"; why: string }[];
   events: EventItem[];
@@ -55,6 +57,20 @@ export type LiveOpsSnapshot = {
       note: string;
     }[];
   };
+  unitBoard: {
+    units: {
+      code: string;
+      codename: string;
+      icon: string;
+      status: "Idle" | "Working" | "Blocked" | "Needs JB" | "Waiting approval";
+      objective: string;
+      tier: 1 | 2 | 3;
+      lastUpdate: string;
+      nextOwner: string;
+    }[];
+    wrenchChips: { reason: string; lane: string }[];
+    telegramFeed: { id: string; type: string; status: "queued" | "sent" | "failed"; message: string; createdAt: string }[];
+  };
 };
 
 async function ghJson<T>(args: string[]): Promise<{ data: T | null; error?: string }> {
@@ -69,28 +85,10 @@ async function ghJson<T>(args: string[]): Promise<{ data: T | null; error?: stri
 export async function getLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
   const [issueRes, prRes, events, repoGraph, approvals, tasks] = await Promise.all([
     ghJson<GitHubItem[]>([
-      "issue",
-      "list",
-      "--repo",
-      "developwithJB/thecontrollables",
-      "--state",
-      "open",
-      "--limit",
-      "10",
-      "--json",
-      "number,title,url,labels",
+      "issue", "list", "--repo", "developwithJB/thecontrollables", "--state", "open", "--limit", "10", "--json", "number,title,url,labels",
     ]),
     ghJson<GitHubItem[]>([
-      "pr",
-      "list",
-      "--repo",
-      "developwithJB/thecontrollables",
-      "--state",
-      "open",
-      "--limit",
-      "10",
-      "--json",
-      "number,title,url,labels",
+      "pr", "list", "--repo", "developwithJB/thecontrollables", "--state", "open", "--limit", "10", "--json", "number,title,url,labels",
     ]),
     readEvents(),
     readRepoGraph(),
@@ -98,23 +96,34 @@ export async function getLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
     readTasks(),
   ]);
 
+  const rankedTasks = rankTasks(tasks);
   const seededTop3: LiveOpsSnapshot["top3"] = [
-    {
-      title: "Finalize Haushavn repo handoff checklist",
-      tier: "Tier 1",
-      why: "Removes blocker for core MVP execution next week.",
-    },
-    {
-      title: "Close Pipeline A governance issues (#11/#12/#13)",
-      tier: "Tier 2",
-      why: "Creates repeatable engineering operating system.",
-    },
-    {
-      title: "Define speaking/workshop outreach list",
-      tier: "Tier 3",
-      why: "Supports weekly win criteria and revenue-adjacent growth.",
-    },
+    { title: "Finalize Haushavn repo handoff checklist", tier: "Tier 1", why: "Removes blocker for core MVP execution next week." },
+    { title: "Close Pipeline A governance issues (#11/#12/#13)", tier: "Tier 2", why: "Creates repeatable engineering operating system." },
+    { title: "Define speaking/workshop outreach list", tier: "Tier 3", why: "Supports weekly win criteria and revenue-adjacent growth." },
   ];
+
+  const hasTier1Backlog = rankedTasks.some((t) => t.tier === "Tier 1" && t.status !== "done");
+  const proposesTier3 = rankedTasks.some((t) => t.tier === "Tier 3" && ["inbox", "planned", "doing"].includes(t.status));
+  const parallelEpics = rankedTasks.filter((t) => t.status === "doing").length;
+  const touchesSensitiveSurface = rankedTasks.some((t) => /auth|permission|payment|deploy/i.test(t.title));
+  const hasUnmeasurableFeature = rankedTasks.some((t) => /feature/i.test(t.title) && !/\b(kpi|metric|outcome|target)\b/i.test(t.title));
+
+  const wrenchChips = detectWrenchTriggers({
+    hasTier1Backlog,
+    proposesTier3,
+    touchesSensitiveSurface,
+    parallelEpics,
+    hasUnmeasurableFeature,
+  });
+
+  const telegramFeed = listRecentTelegramOutbox(10).map((n) => ({
+    id: n.id,
+    type: n.type,
+    status: n.status,
+    message: n.message,
+    createdAt: n.createdAt,
+  }));
 
   const githubError = issueRes.error ?? prRes.error;
   const prReadiness = scorePrReadiness(prRes.data ?? []);
@@ -134,8 +143,22 @@ export async function getLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
     ],
     top3: seededTop3,
     events,
-    rankedTasks: rankTasks(tasks),
+    rankedTasks,
     prReadiness,
     repoGraph,
+    unitBoard: {
+      units: [
+        { code: "PROD-1", codename: "Compass", icon: "🧭", status: "Working", objective: "Protect Tier 1 roadmap integrity", tier: 1, lastUpdate: new Date().toISOString(), nextOwner: "OPS-1" },
+        { code: "OPS-1", codename: "Flow", icon: "🌊", status: "Working", objective: "Sequence sprint against Tier ladder", tier: 1, lastUpdate: new Date().toISOString(), nextOwner: "ARCH-1" },
+        { code: "ARCH-1", codename: "Spine", icon: "🧬", status: "Waiting approval", objective: "Validate service boundaries", tier: 1, lastUpdate: new Date().toISOString(), nextOwner: "ENG-1" },
+        { code: "ENG-1", codename: "Builder", icon: "🔨", status: "Working", objective: "Ship stable increments", tier: 1, lastUpdate: new Date().toISOString(), nextOwner: "GOV-1" },
+        { code: "GOV-1", codename: "Gatekeeper", icon: "🛡", status: "Idle", objective: "Enforce sensitive action approvals", tier: 1, lastUpdate: new Date().toISOString(), nextOwner: "JB" },
+        { code: "REV-1", codename: "Monetizer", icon: "💰", status: "Idle", objective: "Model monetization on shipped value", tier: 2, lastUpdate: new Date().toISOString(), nextOwner: "GTM-1" },
+        { code: "GTM-1", codename: "Amplifier", icon: "📣", status: "Idle", objective: "Distribute validated outcomes", tier: 2, lastUpdate: new Date().toISOString(), nextOwner: "REV-1" },
+        { code: "CONTRA-1", codename: "Wrench", icon: "🧨", status: wrenchChips.length ? "Working" : "Idle", objective: "Stress-test plan quality and tier proof", tier: 1, lastUpdate: new Date().toISOString(), nextOwner: wrenchChips.length ? "PROD-1" : "OPS-1" },
+      ],
+      wrenchChips,
+      telegramFeed,
+    },
   };
 }
