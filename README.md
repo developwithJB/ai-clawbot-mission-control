@@ -67,11 +67,19 @@ Operational docs included:
 
 ## Data & Persistence
 
-Current implementation uses lightweight file-backed storage for speed and transparency:
+Phase 1 architecture upgrade is now live with a durable SQL backbone:
 
-- `data/approvals.json` — approvals queue state
-- `data/events.json` — event timeline entries
-- `data/repositories.json` — repo graph + dependencies
+- `db/schema.sql` — canonical schema (SQLite local-first, Postgres-upgradeable)
+- `db/mission-control.sqlite` — local durable state store
+- service layer under `src/lib/services/*` handles approvals, events, and repositories
+
+Legacy JSON files are retained for backup/seed only:
+
+- `data/approvals.json`
+- `data/events.json`
+- `data/repositories.json`
+
+Mission Control no longer writes operational state to `data/`.
 
 ---
 
@@ -171,11 +179,24 @@ Recent PR chain:
 
 ## Architecture Direction
 
-We are transitioning from local file-backed state to a durable state backbone.
+Phase 1 is complete: Mission Control now uses a SQL-backed operational store with a service-layer abstraction.
 
-- Current: JSON files in `data/`
-- Next: SQL-backed operational store (`db/schema.sql`)
+- Current: SQL operational state (`db/schema.sql` + `db/mission-control.sqlite`)
+- Backup compatibility: legacy JSON in `data/` is read-only seed/backup
 - Goal: reliable multi-user collaboration and auditability
+
+### Migration Note (Phase 1)
+
+- API contracts remain intact for existing routes:
+  - `GET /api/events`
+  - `GET /api/approvals`
+  - `PATCH /api/approvals/:id`
+- Approvals now include a `version` column for optimistic concurrency.
+- `PATCH /api/approvals/:id` supports conflict-safe updates and returns `409` on version mismatch when `version` is provided.
+- Route handlers are thin; persistence logic is centralized in:
+  - `src/lib/services/approvalService.ts`
+  - `src/lib/services/eventService.ts`
+  - `src/lib/services/repositoryService.ts`
 
 ## Near-Term Roadmap
 

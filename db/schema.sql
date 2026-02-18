@@ -1,49 +1,46 @@
--- Mission Control State Backbone v1
+-- Mission Control durable SQL backbone (Phase 1)
+-- SQLite-first, Postgres-upgradeable (portable SQL types + constraints)
 
-create table if not exists mc_tasks (
-  id text primary key,
-  title text not null,
-  tier text not null check (tier in ('Tier 1','Tier 2','Tier 3')),
-  status text not null check (status in ('inbox','planned','doing','blocked','review','done')),
-  owner text,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+PRAGMA foreign_keys = ON;
+
+CREATE TABLE IF NOT EXISTS approvals (
+  id TEXT PRIMARY KEY,
+  item TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  level TEXT NOT NULL CHECK (level IN ('High', 'Medium')),
+  status TEXT NOT NULL CHECK (status IN ('pending', 'approved', 'rejected')),
+  version INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL,
+  resolved_at TEXT
 );
 
-create table if not exists mc_approvals (
-  id text primary key,
-  item text not null,
-  reason text not null,
-  level text not null check (level in ('High','Medium')),
-  status text not null check (status in ('pending','approved','rejected')),
-  created_at timestamptz not null default now(),
-  resolved_at timestamptz
+CREATE TABLE IF NOT EXISTS events (
+  id TEXT PRIMARY KEY,
+  agent TEXT NOT NULL,
+  pipeline TEXT NOT NULL CHECK (pipeline IN ('A', 'B', 'C', 'D')),
+  type TEXT NOT NULL CHECK (type IN ('decision', 'delivery', 'integration', 'approval')),
+  summary TEXT NOT NULL,
+  timestamp TEXT NOT NULL
 );
 
-create table if not exists mc_events (
-  id text primary key,
-  agent text not null,
-  pipeline text not null check (pipeline in ('A','B','C','D')),
-  type text not null check (type in ('decision','delivery','integration','approval')),
-  summary text not null,
-  created_at timestamptz not null default now()
+CREATE TABLE IF NOT EXISTS repositories (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  url TEXT NOT NULL,
+  tier TEXT NOT NULL CHECK (tier IN ('Tier 1', 'Tier 2', 'Tier 3')),
+  status TEXT NOT NULL CHECK (status IN ('active', 'pending-access', 'paused')),
+  health TEXT NOT NULL CHECK (health IN ('green', 'yellow', 'red'))
 );
 
-create table if not exists mc_repositories (
-  id text primary key,
-  name text not null,
-  url text not null,
-  tier text not null check (tier in ('Tier 1','Tier 2','Tier 3')),
-  status text not null check (status in ('active','pending-access','paused')),
-  health text not null check (health in ('green','yellow','red')),
-  created_at timestamptz not null default now()
+CREATE TABLE IF NOT EXISTS repository_dependencies (
+  id TEXT PRIMARY KEY,
+  from_repo TEXT NOT NULL REFERENCES repositories(id) ON DELETE CASCADE,
+  to_repo TEXT NOT NULL REFERENCES repositories(id) ON DELETE CASCADE,
+  type TEXT NOT NULL CHECK (type IN ('playbook-transfer', 'blocked-by', 'feeds')),
+  note TEXT NOT NULL
 );
 
-create table if not exists mc_repo_dependencies (
-  id text primary key,
-  from_repo text not null references mc_repositories(id) on delete cascade,
-  to_repo text not null references mc_repositories(id) on delete cascade,
-  dep_type text not null check (dep_type in ('playbook-transfer','blocked-by','feeds')),
-  note text not null,
-  created_at timestamptz not null default now()
-);
+CREATE INDEX IF NOT EXISTS idx_approvals_status ON approvals(status);
+CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_repo_deps_from ON repository_dependencies(from_repo);
+CREATE INDEX IF NOT EXISTS idx_repo_deps_to ON repository_dependencies(to_repo);

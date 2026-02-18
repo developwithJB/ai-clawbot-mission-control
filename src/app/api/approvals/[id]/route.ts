@@ -1,22 +1,42 @@
 import { NextRequest, NextResponse } from "next/server";
-import { resolveApproval } from "@/lib/approvals";
-import { appendEvent } from "@/lib/events";
+import { resolveApproval } from "@/lib/services/approvalService";
+import { appendEvent } from "@/lib/services/eventService";
+
+type ApprovalPatchBody = {
+  status?: "approved" | "rejected";
+  version?: number;
+};
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const body = (await req.json()) as { status?: "approved" | "rejected" };
+    const body = (await req.json()) as ApprovalPatchBody;
+
     if (!body?.status || !["approved", "rejected"].includes(body.status)) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
 
+    if (body.version !== undefined && !Number.isInteger(body.version)) {
+      return NextResponse.json({ error: "Invalid version" }, { status: 400 });
+    }
+
     const { id } = await params;
-    const updated = await resolveApproval(id, body.status);
-    if (!updated) {
+    const result = resolveApproval(id, body.status, body.version);
+
+    if (result.kind === "not_found") {
       return NextResponse.json({ error: "Approval item not found" }, { status: 404 });
     }
 
+    if (result.kind === "version_conflict") {
+      return NextResponse.json(
+        { error: "Version conflict", approval: result.approval },
+        { status: 409 },
+      );
+    }
+
+    const updated = result.approval;
     const eventId = `evt-${Date.now()}`;
-    await appendEvent({
+
+    appendEvent({
       id: eventId,
       agent: "Operator",
       pipeline: "D",
