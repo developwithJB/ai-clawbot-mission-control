@@ -179,8 +179,11 @@ function pipelineClass(status: Pipeline["status"]) {
   return "border-zinc-700 bg-zinc-900/40";
 }
 
+export const revalidate = 60;
+
 export default async function Home() {
   const live = await getLiveOpsSnapshot();
+  const lastUpdated = new Date().toLocaleString("en-US", { timeZone: "America/Chicago" });
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
@@ -191,6 +194,7 @@ export default async function Home() {
           <p className="mt-3 max-w-4xl text-zinc-300">
             Active execution mode enabled. Pipeline order confirmed: <strong>A → D → B → C</strong>.
           </p>
+          <p className="mt-2 text-xs text-zinc-500">Live snapshot refreshed: {lastUpdated} (America/Chicago)</p>
         </header>
 
         <section className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
