@@ -6,7 +6,7 @@ type EventItem = {
   id: string;
   agent: string;
   pipeline: "A" | "B" | "C" | "D";
-  type: "decision" | "delivery" | "integration" | "approval";
+  type: "decision" | "delivery" | "integration" | "approval" | "approval_decided";
   summary: string;
   timestamp: string;
 };
@@ -14,7 +14,7 @@ type EventItem = {
 function typeClass(type: EventItem["type"]) {
   if (type === "delivery") return "text-emerald-300";
   if (type === "decision") return "text-sky-300";
-  if (type === "approval") return "text-amber-300";
+  if (type === "approval" || type === "approval_decided") return "text-amber-300";
   return "text-zinc-300";
 }
 

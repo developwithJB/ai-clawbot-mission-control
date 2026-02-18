@@ -11,8 +11,8 @@ type Approval = {
   version: number;
 };
 
-type ApprovalsResponse = {
-  approvals: Approval[];
+type ApprovalByIdResponse = {
+  approval: Approval;
 };
 
 type PatchResponse = {
@@ -27,11 +27,13 @@ export function ApprovalInbox({ approvals }: { approvals: Approval[] }) {
 
   const pendingCount = useMemo(() => items.filter((i) => i.status === "pending").length, [items]);
 
-  const refetchApprovals = async () => {
-    const res = await fetch("/api/approvals", { method: "GET", cache: "no-store" });
-    if (!res.ok) throw new Error("Failed to refetch approvals");
-    const data = (await res.json()) as ApprovalsResponse;
-    setItems(data.approvals ?? []);
+  const refetchApprovalById = async (id: string) => {
+    const res = await fetch(`/api/approvals/${id}`, { method: "GET", cache: "no-store" });
+    if (!res.ok) throw new Error("Failed to refetch approval");
+    const data = (await res.json()) as ApprovalByIdResponse;
+    if (!data?.approval) return;
+
+    setItems((prev) => prev.map((item) => (item.id === id ? data.approval : item)));
   };
 
   const showToast = (message: string) => {
@@ -54,13 +56,18 @@ export function ApprovalInbox({ approvals }: { approvals: Approval[] }) {
     try {
       const res = await fetch(`/api/approvals/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          // Phase 4 MVP placeholder identity; replace with real auth/session wiring.
+          "x-mc-role": "operator",
+          "x-mc-actor": "Operator",
+        },
         body: JSON.stringify({ status, version: current.version }),
       });
 
       if (res.status === 409) {
-        await refetchApprovals();
-        showToast("Approval was updated elsewhere. Refreshed to latest state.");
+        await refetchApprovalById(id);
+        showToast("Approval changed elsewhere. Updated this card to latest.");
         return;
       }
 

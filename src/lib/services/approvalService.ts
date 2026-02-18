@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { getDb, withTransaction } from "@/lib/db";
+import { appendEvent } from "@/lib/services/eventService";
 
 export type ApprovalLevel = "High" | "Medium";
 export type ApprovalStatus = "pending" | "approved" | "rejected";
@@ -28,6 +29,12 @@ type ApprovalRow = {
   status: ApprovalStatus;
   version: number;
   created_at: string;
+};
+
+type ResolveMeta = {
+  decidedBy?: string;
+  requestId?: string;
+  traceId?: string;
 };
 
 let seeded = false;
@@ -125,14 +132,31 @@ export function listApprovals(): ApprovalItem[] {
   return rows.map(toApprovalItem);
 }
 
+export function getApprovalById(id: string): ApprovalItem | null {
+  ensureSeeded();
+  const db = getDb();
+  const row = db
+    .prepare(
+      `SELECT id, item, reason, level, status, version, created_at
+       FROM approvals
+       WHERE id = ?`
+    )
+    .get(id) as ApprovalRow | undefined;
+
+  return row ? toApprovalItem(row) : null;
+}
+
 export function resolveApproval(
   id: string,
   status: "approved" | "rejected",
   expectedVersion?: number,
+  meta?: ResolveMeta,
 ): ResolveResult {
   ensureSeeded();
 
-  return withTransaction(() => {
+  const decidedAt = new Date().toISOString();
+
+  const result = withTransaction(() => {
     const db = getDb();
     const current = db
       .prepare(
@@ -142,13 +166,13 @@ export function resolveApproval(
       )
       .get(id) as ApprovalRow | undefined;
 
-    if (!current) return { kind: "not_found" };
+    if (!current) return { kind: "not_found" } as const;
 
     if (typeof expectedVersion === "number" && current.version !== expectedVersion) {
-      return { kind: "version_conflict", approval: toApprovalItem(current) };
+      return { kind: "version_conflict", approval: toApprovalItem(current) } as const;
     }
 
-    const result = db
+    const updateResult = db
       .prepare(
         `UPDATE approvals
          SET status = ?,
@@ -156,9 +180,9 @@ export function resolveApproval(
              resolved_at = CASE WHEN ? = 'pending' THEN NULL ELSE ? END
          WHERE id = ? AND version = ?`
       )
-      .run(status, status, new Date().toISOString(), id, current.version);
+      .run(status, status, decidedAt, id, current.version);
 
-    if (result.changes === 0) {
+    if (updateResult.changes === 0) {
       const latest = db
         .prepare(
           `SELECT id, item, reason, level, status, version, created_at
@@ -166,7 +190,7 @@ export function resolveApproval(
            WHERE id = ?`
         )
         .get(id) as ApprovalRow;
-      return { kind: "version_conflict", approval: toApprovalItem(latest) };
+      return { kind: "version_conflict", approval: toApprovalItem(latest) } as const;
     }
 
     const updated = db
@@ -177,6 +201,32 @@ export function resolveApproval(
       )
       .get(id) as ApprovalRow;
 
-    return { kind: "ok", approval: toApprovalItem(updated) };
+    return {
+      kind: "ok",
+      approval: toApprovalItem(updated),
+      previousStatus: current.status,
+    } as const;
   });
+
+  if (result.kind === "ok") {
+    appendEvent({
+      id: `evt-${Date.now()}`,
+      agent: meta?.decidedBy ?? "system",
+      pipeline: "D",
+      type: "approval_decided",
+      summary: `${result.previousStatus.toUpperCase()} → ${result.approval.status.toUpperCase()}: ${result.approval.item}`,
+      timestamp: decidedAt,
+      approvalId: result.approval.id,
+      previousStatus: result.previousStatus,
+      newStatus: result.approval.status,
+      decidedBy: meta?.decidedBy ?? "system",
+      decidedAt,
+      requestId: meta?.requestId ?? null,
+      traceId: meta?.traceId ?? null,
+    });
+
+    return { kind: "ok", approval: result.approval };
+  }
+
+  return result;
 }

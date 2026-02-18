@@ -6,12 +6,33 @@ export type EventItem = {
   id: string;
   agent: string;
   pipeline: "A" | "B" | "C" | "D";
-  type: "decision" | "delivery" | "integration" | "approval";
+  type: "decision" | "delivery" | "integration" | "approval" | "approval_decided";
   summary: string;
   timestamp: string;
+  approvalId?: string | null;
+  previousStatus?: "pending" | "approved" | "rejected" | null;
+  newStatus?: "pending" | "approved" | "rejected" | null;
+  decidedBy?: string | null;
+  decidedAt?: string | null;
+  requestId?: string | null;
+  traceId?: string | null;
 };
 
-type EventRow = EventItem;
+type EventRow = {
+  id: string;
+  agent: string;
+  pipeline: "A" | "B" | "C" | "D";
+  type: "decision" | "delivery" | "integration" | "approval" | "approval_decided";
+  summary: string;
+  timestamp: string;
+  approval_id: string | null;
+  previous_status: "pending" | "approved" | "rejected" | null;
+  new_status: "pending" | "approved" | "rejected" | null;
+  decided_by: string | null;
+  decided_at: string | null;
+  request_id: string | null;
+  trace_id: string | null;
+};
 
 let seeded = false;
 
@@ -25,6 +46,24 @@ const fallbackSeed: EventItem[] = [
     timestamp: new Date().toISOString(),
   },
 ];
+
+function toEventItem(row: EventRow): EventItem {
+  return {
+    id: row.id,
+    agent: row.agent,
+    pipeline: row.pipeline,
+    type: row.type,
+    summary: row.summary,
+    timestamp: row.timestamp,
+    approvalId: row.approval_id,
+    previousStatus: row.previous_status,
+    newStatus: row.new_status,
+    decidedBy: row.decided_by,
+    decidedAt: row.decided_at,
+    requestId: row.request_id,
+    traceId: row.trace_id,
+  };
+}
 
 function loadLegacySeed(): EventItem[] {
   const legacyPath = path.join(process.cwd(), "data", "events.json");
@@ -64,14 +103,15 @@ export function listEvents(limit = 200): EventItem[] {
   const db = getDb();
   const rows = db
     .prepare(
-      `SELECT id, agent, pipeline, type, summary, timestamp
+      `SELECT id, agent, pipeline, type, summary, timestamp,
+              approval_id, previous_status, new_status, decided_by, decided_at, request_id, trace_id
        FROM events
        ORDER BY datetime(timestamp) DESC
        LIMIT ?`
     )
     .all(limit) as EventRow[];
 
-  return rows;
+  return rows.map(toEventItem);
 }
 
 export function appendEvent(event: EventItem): void {
@@ -80,9 +120,25 @@ export function appendEvent(event: EventItem): void {
   withTransaction(() => {
     const db = getDb();
     db.prepare(
-      `INSERT INTO events (id, agent, pipeline, type, summary, timestamp)
-       VALUES (?, ?, ?, ?, ?, ?)`
-    ).run(event.id, event.agent, event.pipeline, event.type, event.summary, event.timestamp);
+      `INSERT INTO events (
+          id, agent, pipeline, type, summary, timestamp,
+          approval_id, previous_status, new_status, decided_by, decided_at, request_id, trace_id
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      event.id,
+      event.agent,
+      event.pipeline,
+      event.type,
+      event.summary,
+      event.timestamp,
+      event.approvalId ?? null,
+      event.previousStatus ?? null,
+      event.newStatus ?? null,
+      event.decidedBy ?? null,
+      event.decidedAt ?? null,
+      event.requestId ?? null,
+      event.traceId ?? null,
+    );
 
     const staleIds = db
       .prepare(

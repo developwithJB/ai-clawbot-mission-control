@@ -1,11 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { resolveApproval } from "@/lib/services/approvalService";
-import { appendEvent } from "@/lib/services/eventService";
+import { getApprovalById, resolveApproval } from "@/lib/services/approvalService";
+import { getActorIdentity } from "@/lib/authz";
 
 type ApprovalPatchBody = {
   status?: "approved" | "rejected";
   version?: number;
 };
+
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    const approval = getApprovalById(id);
+    if (!approval) {
+      return NextResponse.json({ error: "Approval item not found" }, { status: 404 });
+    }
+    return NextResponse.json({ approval });
+  } catch {
+    return NextResponse.json({ error: "Failed to load approval" }, { status: 500 });
+  }
+}
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -20,7 +33,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
 
     const { id } = await params;
-    const result = resolveApproval(id, body.status, body.version);
+    const result = resolveApproval(id, body.status, body.version, {
+      decidedBy: getActorIdentity(req),
+      requestId: req.headers.get("x-request-id") ?? req.headers.get("x-correlation-id") ?? undefined,
+      traceId: req.headers.get("x-trace-id") ?? undefined,
+    });
 
     if (result.kind === "not_found") {
       return NextResponse.json({ error: "Approval item not found" }, { status: 404 });
@@ -33,19 +50,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       );
     }
 
-    const updated = result.approval;
-    const eventId = `evt-${Date.now()}`;
-
-    appendEvent({
-      id: eventId,
-      agent: "Operator",
-      pipeline: "D",
-      type: "approval",
-      summary: `${body.status.toUpperCase()}: ${updated.item}`,
-      timestamp: new Date().toISOString(),
-    });
-
-    return NextResponse.json({ approval: updated, eventId });
+    return NextResponse.json({ approval: result.approval });
   } catch {
     return NextResponse.json({ error: "Failed to update approval" }, { status: 500 });
   }

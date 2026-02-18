@@ -10,9 +10,16 @@ type EventItem = {
   id: string;
   agent: string;
   pipeline: "A" | "B" | "C" | "D";
-  type: "decision" | "delivery" | "integration" | "approval";
+  type: "decision" | "delivery" | "integration" | "approval" | "approval_decided";
   summary: string;
   timestamp: string;
+  approvalId?: string | null;
+  previousStatus?: "pending" | "approved" | "rejected" | null;
+  newStatus?: "pending" | "approved" | "rejected" | null;
+  decidedBy?: string | null;
+  decidedAt?: string | null;
+  requestId?: string | null;
+  traceId?: string | null;
 };
 
 const execFileAsync = promisify(execFile);
