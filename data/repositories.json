@@ -1,0 +1,28 @@
+{
+  "repositories": [
+    {
+      "id": "dashboard",
+      "name": "The Dashboard / The Controllables",
+      "url": "https://github.com/developwithJB/thecontrollables",
+      "tier": "Tier 3",
+      "status": "active",
+      "health": "green"
+    },
+    {
+      "id": "haushavn",
+      "name": "Haushavn (private)",
+      "url": "pending",
+      "tier": "Tier 1",
+      "status": "pending-access",
+      "health": "yellow"
+    }
+  ],
+  "dependencies": [
+    {
+      "from": "haushavn",
+      "to": "dashboard",
+      "type": "playbook-transfer",
+      "note": "Bug triage + sprint governance patterns port from dashboard"
+    }
+  ]
+}

@@ -2,6 +2,7 @@ import { ActivityFeed } from "@/components/hq/ActivityFeed";
 import { ApprovalInbox } from "@/components/hq/ApprovalInbox";
 import { EventTimeline } from "@/components/hq/EventTimeline";
 import { GitHubLivePanel } from "@/components/hq/GitHubLivePanel";
+import { RepoDependencyBoard } from "@/components/hq/RepoDependencyBoard";
 import { getLiveOpsSnapshot } from "@/lib/live";
 
 type Agent = {
@@ -121,21 +122,6 @@ const pipelines: Pipeline[] = [
       "Distribute and capture engagement",
       "Feed high-performing messages to revenue pipeline",
     ],
-  },
-];
-
-const repoCards = [
-  {
-    name: "The Dashboard / The Controllables",
-    url: "https://github.com/developwithJB/thecontrollables",
-    status: "Execution Enabled",
-    workflow: "Active via Pipeline A",
-  },
-  {
-    name: "Haushavn (private)",
-    url: "TBD",
-    status: "Awaiting access",
-    workflow: "Will become Tier 1 primary when shared",
   },
 ];
 
@@ -327,21 +313,12 @@ export default async function Home() {
           </div>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-3">
-          <article className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
-            <h2 className="text-lg font-semibold">Repository Workspaces</h2>
-            <div className="mt-4 space-y-3">
-              {repoCards.map((repo) => (
-                <div key={repo.name} className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-4">
-                  <p className="font-medium">{repo.name}</p>
-                  <p className="mt-1 text-xs text-zinc-400">{repo.url}</p>
-                  <p className="mt-2 text-sm text-zinc-300">Status: {repo.status}</p>
-                  <p className="text-sm text-zinc-300">Workflow: {repo.workflow}</p>
-                </div>
-              ))}
-            </div>
-          </article>
+        <RepoDependencyBoard
+          repositories={live.repoGraph.repositories}
+          dependencies={live.repoGraph.dependencies}
+        />
 
+        <section className="grid gap-4 md:grid-cols-2">
           <article className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
             <h2 className="text-lg font-semibold">Execution Queue</h2>
             <div className="mt-4 space-y-3">

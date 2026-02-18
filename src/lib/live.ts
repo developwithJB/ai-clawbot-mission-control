@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { readEvents } from "@/lib/events";
+import { readRepoGraph } from "@/lib/repositories";
 
 type EventItem = {
   id: string;
@@ -22,6 +23,22 @@ export type LiveOpsSnapshot = {
   shippedToday: { who: string; summary: string; when: string }[];
   top3: { title: string; tier: "Tier 1" | "Tier 2" | "Tier 3"; why: string }[];
   events: EventItem[];
+  repoGraph: {
+    repositories: {
+      id: string;
+      name: string;
+      url: string;
+      tier: "Tier 1" | "Tier 2" | "Tier 3";
+      status: "active" | "pending-access" | "paused";
+      health: "green" | "yellow" | "red";
+    }[];
+    dependencies: {
+      from: string;
+      to: string;
+      type: "playbook-transfer" | "blocked-by" | "feeds";
+      note: string;
+    }[];
+  };
 };
 
 async function ghJson<T>(args: string[]): Promise<T | null> {
@@ -34,7 +51,7 @@ async function ghJson<T>(args: string[]): Promise<T | null> {
 }
 
 export async function getLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
-  const [openIssues, openPrs, events] = await Promise.all([
+  const [openIssues, openPrs, events, repoGraph] = await Promise.all([
     ghJson<GitHubItem[]>([
       "issue",
       "list",
@@ -60,6 +77,7 @@ export async function getLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
       "number,title,url,labels",
     ]),
     readEvents(),
+    readRepoGraph(),
   ]);
 
   const seededTop3: LiveOpsSnapshot["top3"] = [
@@ -95,5 +113,6 @@ export async function getLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
     ],
     top3: seededTop3,
     events,
+    repoGraph,
   };
 }
