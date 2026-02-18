@@ -1,0 +1,16 @@
+[
+  {
+    "id": "task-001",
+    "title": "Finalize Haushavn onboarding checklist",
+    "tier": "Tier 1",
+    "status": "planned",
+    "owner": "Operator"
+  },
+  {
+    "id": "task-002",
+    "title": "Close issue #13 safety gates",
+    "tier": "Tier 2",
+    "status": "doing",
+    "owner": "Bug Engineer"
+  }
+]
