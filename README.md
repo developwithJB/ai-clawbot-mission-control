@@ -220,3 +220,12 @@ When pausing after a shipping sprint:
 3. Leave next-step note in PR #10 body
 4. Resume from highest stack branch next session
 
+
+
+## Haushavn Readiness
+
+A dedicated onboarding playbook is included to accelerate Tier-1 repo takeover:
+
+- `docs/operations/HAUSHAVN_ONBOARDING_KIT.md`
+
+This kit defines access/safety checks, label bootstrap, MVP mapping, and a first 72-hour sprint template.

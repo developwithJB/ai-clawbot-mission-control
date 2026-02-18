@@ -9,6 +9,7 @@ import { PermissionsMatrix } from "@/components/hq/PermissionsMatrix";
 import { TaskOrchestratorCard } from "@/components/hq/TaskOrchestratorCard";
 import { PRReadinessBoard } from "@/components/hq/PRReadinessBoard";
 import { PolicyGuardrails } from "@/components/hq/PolicyGuardrails";
+import { HaushavnOnboardingCard } from "@/components/hq/HaushavnOnboardingCard";
 import { getLiveOpsSnapshot } from "@/lib/live";
 
 type Agent = {
@@ -391,6 +392,8 @@ export default async function Home() {
         <PRReadinessBoard prs={live.prReadiness} />
 
         <PolicyGuardrails />
+
+        <HaushavnOnboardingCard />
 
         <EventTimeline events={live.events} />
 
