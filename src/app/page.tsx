@@ -5,6 +5,7 @@ import { GitHubLivePanel } from "@/components/hq/GitHubLivePanel";
 import { RepoDependencyBoard } from "@/components/hq/RepoDependencyBoard";
 import { LiveOpsControls } from "@/components/hq/LiveOpsControls";
 import { OpsPulse } from "@/components/hq/OpsPulse";
+import { PermissionsMatrix } from "@/components/hq/PermissionsMatrix";
 import { getLiveOpsSnapshot } from "@/lib/live";
 
 type Agent = {
@@ -176,6 +177,13 @@ const weeklyWinCriteria = [
 ];
 const pipelineOrder = ["A · Bug Engineer", "D · Sprint Planner", "B · Revenue", "C · Marketing"];
 
+const rolePermissions = [
+  { name: "Operator", deploy: "approval", message: "approval", purchase: "approval", repoWrite: "allowed" },
+  { name: "Bug Engineer", deploy: "denied", message: "denied", purchase: "denied", repoWrite: "allowed" },
+  { name: "Revenue Officer", deploy: "denied", message: "approval", purchase: "approval", repoWrite: "denied" },
+  { name: "Marketing Operator", deploy: "denied", message: "approval", purchase: "approval", repoWrite: "denied" },
+] as const;
+
 function badgeClass(status: Agent["status"]) {
   if (status === "Working") return "border-emerald-500/30 bg-emerald-500/15 text-emerald-300";
   if (status === "Needs Review") return "border-amber-500/30 bg-amber-500/15 text-amber-300";
@@ -330,6 +338,8 @@ export default async function Home() {
           repositories={live.repoGraph.repositories}
           dependencies={live.repoGraph.dependencies}
         />
+
+        <PermissionsMatrix roles={[...rolePermissions]} />
 
         <section className="grid gap-4 md:grid-cols-2">
           <article className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
