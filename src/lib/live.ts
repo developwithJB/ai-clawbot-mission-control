@@ -12,7 +12,7 @@ type EventItem = {
   id: string;
   agent: string;
   pipeline: "A" | "B" | "C" | "D";
-  type: "decision" | "delivery" | "integration" | "approval" | "approval_decided";
+  type: "decision" | "delivery" | "integration" | "approval" | "approval_decided" | "web_search";
   summary: string;
   timestamp: string;
   approvalId?: string | null;

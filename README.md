@@ -121,6 +121,7 @@ Built for a 15-second scan:
 - `POST /api/asks/resolve`
 - `POST /api/telegram/notify`
 - `GET /api/telegram/feed`
+- `POST /api/web-search` (logs each search event with provider/query/timestamp)
 
 Telegram notify supports:
 - raw payloads, and

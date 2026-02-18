@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS events (
   id TEXT PRIMARY KEY,
   agent TEXT NOT NULL,
   pipeline TEXT NOT NULL CHECK (pipeline IN ('A', 'B', 'C', 'D')),
-  type TEXT NOT NULL CHECK (type IN ('decision', 'delivery', 'integration', 'approval', 'approval_decided')),
+  type TEXT NOT NULL CHECK (type IN ('decision', 'delivery', 'integration', 'approval', 'approval_decided', 'web_search')),
   summary TEXT NOT NULL,
   timestamp TEXT NOT NULL,
   approval_id TEXT,
