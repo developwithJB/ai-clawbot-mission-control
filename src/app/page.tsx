@@ -159,6 +159,26 @@ const executionQueue = [
   },
 ];
 
+type ReviewRisk = "Low" | "Medium" | "High";
+
+const prReviewQueue: { title: string; risk: ReviewRisk; reviewUrl: string }[] = [
+  {
+    title: "feat: harden approval gate retry flow",
+    risk: "High",
+    reviewUrl: "https://github.com/developwithJB/thecontrollables/pull/118",
+  },
+  {
+    title: "fix: normalize webhook payload parser",
+    risk: "Medium",
+    reviewUrl: "https://github.com/developwithJB/thecontrollables/pull/117",
+  },
+  {
+    title: "chore: refresh mission control copy blocks",
+    risk: "Low",
+    reviewUrl: "https://github.com/developwithJB/thecontrollables/pull/116",
+  },
+];
+
 const approvalGates = ["Deployments", "Outbound Messages", "Purchases"];
 const weeklyWinCriteria = [
   "Haushavn MVP progress (12-week plan)",
@@ -177,6 +197,12 @@ function pipelineClass(status: Pipeline["status"]) {
   if (status === "Active") return "border-emerald-500/30 bg-emerald-500/10";
   if (status === "Queued") return "border-sky-500/30 bg-sky-500/10";
   return "border-zinc-700 bg-zinc-900/40";
+}
+
+function reviewRiskClass(risk: ReviewRisk) {
+  if (risk === "High") return "border-rose-500/30 bg-rose-500/10 text-rose-300";
+  if (risk === "Medium") return "border-amber-500/30 bg-amber-500/10 text-amber-300";
+  return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
 }
 
 export const revalidate = 60;
@@ -300,7 +326,7 @@ export default async function Home() {
           </div>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-2">
+        <section className="grid gap-4 md:grid-cols-3">
           <article className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
             <h2 className="text-lg font-semibold">Repository Workspaces</h2>
             <div className="mt-4 space-y-3">
@@ -326,6 +352,30 @@ export default async function Home() {
                     <p>State: {task.state}</p>
                     <p>Alignment: {task.alignment}</p>
                   </div>
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <article className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
+            <h2 className="text-lg font-semibold">PR Review Queue</h2>
+            <div className="mt-4 space-y-2">
+              {prReviewQueue.map((pr) => (
+                <div key={pr.title} className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-medium text-zinc-100">{pr.title}</p>
+                    <span className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide ${reviewRiskClass(pr.risk)}`}>
+                      {pr.risk}
+                    </span>
+                  </div>
+                  <a
+                    className="mt-2 inline-block text-xs text-sky-300 hover:text-sky-200 hover:underline"
+                    href={pr.reviewUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Review PR
+                  </a>
                 </div>
               ))}
             </div>
