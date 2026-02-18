@@ -185,3 +185,30 @@ Recent PR chain:
 - **Lead Operator:** Embedded Strategic AI & Execution Engine (⚙️)
 
 This is a living system. Expect weekly iteration.
+
+
+## Latest Incremental PR Chain (6–10)
+
+- **PR #6**: live refresh controls + safer approval action locking
+- **PR #7**: optimistic approval updates with rollback safety
+- **PR #8**: ops pulse summary metrics
+- **PR #9**: role permissions matrix
+- **PR #10**: release + break notes (this PR)
+
+### What changed in this tranche
+- Real-time collaboration controls are now visible in the UI
+- Governance actions are safer under failure conditions
+- Leadership gets quick operational pulse metrics
+- Permissions are explicit per team role
+
+---
+
+## Break Procedure (Operator + JB)
+
+When pausing after a shipping sprint:
+
+1. Confirm all open PR links are posted in chat
+2. Confirm stacked base ordering is correct
+3. Leave next-step note in PR #10 body
+4. Resume from highest stack branch next session
+
