@@ -1,5 +1,15 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { readEvents } from "@/lib/events";
+
+type EventItem = {
+  id: string;
+  agent: string;
+  pipeline: "A" | "B" | "C" | "D";
+  type: "decision" | "delivery" | "integration" | "approval";
+  summary: string;
+  timestamp: string;
+};
 
 const execFileAsync = promisify(execFile);
 
@@ -11,6 +21,7 @@ export type LiveOpsSnapshot = {
   approvals: { item: string; reason: string; level: "High" | "Medium" }[];
   shippedToday: { who: string; summary: string; when: string }[];
   top3: { title: string; tier: "Tier 1" | "Tier 2" | "Tier 3"; why: string }[];
+  events: EventItem[];
 };
 
 async function ghJson<T>(args: string[]): Promise<T | null> {
@@ -23,7 +34,7 @@ async function ghJson<T>(args: string[]): Promise<T | null> {
 }
 
 export async function getLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
-  const [openIssues, openPrs] = await Promise.all([
+  const [openIssues, openPrs, events] = await Promise.all([
     ghJson<GitHubItem[]>([
       "issue",
       "list",
@@ -48,6 +59,7 @@ export async function getLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
       "--json",
       "number,title,url,labels",
     ]),
+    readEvents(),
   ]);
 
   const seededTop3: LiveOpsSnapshot["top3"] = [
@@ -82,5 +94,6 @@ export async function getLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
       { who: "Ops", summary: "Migrated morning brief delivery to Telegram", when: "Today" },
     ],
     top3: seededTop3,
+    events,
   };
 }

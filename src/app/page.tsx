@@ -1,5 +1,6 @@
 import { ActivityFeed } from "@/components/hq/ActivityFeed";
 import { ApprovalInbox } from "@/components/hq/ApprovalInbox";
+import { EventTimeline } from "@/components/hq/EventTimeline";
 import { GitHubLivePanel } from "@/components/hq/GitHubLivePanel";
 import { getLiveOpsSnapshot } from "@/lib/live";
 
@@ -382,6 +383,8 @@ export default async function Home() {
           </article>
         </section>
 
+        <EventTimeline events={live.events} />
+
         <section className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
           <h2 className="text-lg font-semibold">Audit Log</h2>
           <p className="mt-2 text-sm text-zinc-300">
@@ -391,6 +394,7 @@ export default async function Home() {
             <li>Decision 001: Execute Day 1→3 as safe drafts pending approval.</li>
             <li>Decision 002: `needs-review` label introduced for governance gate.</li>
             <li>Decision 003: Persistent local audit file established.</li>
+            <li>Decision 004: Event timeline surface added for collaborative visibility.</li>
           </ul>
         </section>
       </main>
