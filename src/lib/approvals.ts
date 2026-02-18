@@ -24,6 +24,14 @@ const seeded: ApprovalItem[] = [
     status: "pending",
     createdAt: new Date().toISOString(),
   },
+  {
+    id: "appr-002",
+    item: "Send outbound stakeholder update",
+    reason: "Outbound messaging requires explicit approval",
+    level: "High",
+    status: "pending",
+    createdAt: new Date().toISOString(),
+  },
 ];
 
 export async function readApprovals(): Promise<ApprovalItem[]> {

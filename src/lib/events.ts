@@ -33,3 +33,10 @@ export async function readEvents(): Promise<EventItem[]> {
     return seedEvents;
   }
 }
+
+export async function appendEvent(event: EventItem): Promise<void> {
+  const current = await readEvents();
+  const next = [event, ...current].slice(0, 200);
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(filePath, JSON.stringify(next, null, 2));
+}

@@ -1,0 +1,8 @@
+{
+  "roles": [
+    { "name": "Operator", "deploy": "approval", "message": "approval", "purchase": "approval", "repoWrite": "allowed" },
+    { "name": "Bug Engineer", "deploy": "denied", "message": "denied", "purchase": "denied", "repoWrite": "allowed" },
+    { "name": "Revenue Officer", "deploy": "denied", "message": "approval", "purchase": "approval", "repoWrite": "denied" },
+    { "name": "Marketing Operator", "deploy": "denied", "message": "approval", "purchase": "approval", "repoWrite": "denied" }
+  ]
+}

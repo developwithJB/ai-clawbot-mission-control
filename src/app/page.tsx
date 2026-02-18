@@ -2,6 +2,14 @@ import { ActivityFeed } from "@/components/hq/ActivityFeed";
 import { ApprovalInbox } from "@/components/hq/ApprovalInbox";
 import { EventTimeline } from "@/components/hq/EventTimeline";
 import { GitHubLivePanel } from "@/components/hq/GitHubLivePanel";
+import { RepoDependencyBoard } from "@/components/hq/RepoDependencyBoard";
+import { LiveOpsControls } from "@/components/hq/LiveOpsControls";
+import { OpsPulse } from "@/components/hq/OpsPulse";
+import { PermissionsMatrix } from "@/components/hq/PermissionsMatrix";
+import { TaskOrchestratorCard } from "@/components/hq/TaskOrchestratorCard";
+import { PRReadinessBoard } from "@/components/hq/PRReadinessBoard";
+import { PolicyGuardrails } from "@/components/hq/PolicyGuardrails";
+import { HaushavnOnboardingCard } from "@/components/hq/HaushavnOnboardingCard";
 import { getLiveOpsSnapshot } from "@/lib/live";
 
 type Agent = {
@@ -124,21 +132,6 @@ const pipelines: Pipeline[] = [
   },
 ];
 
-const repoCards = [
-  {
-    name: "The Dashboard / The Controllables",
-    url: "https://github.com/developwithJB/thecontrollables",
-    status: "Execution Enabled",
-    workflow: "Active via Pipeline A",
-  },
-  {
-    name: "Haushavn (private)",
-    url: "TBD",
-    status: "Awaiting access",
-    workflow: "Will become Tier 1 primary when shared",
-  },
-];
-
 const executionQueue = [
   {
     title: "Create issue intake board from repo",
@@ -188,6 +181,13 @@ const weeklyWinCriteria = [
 ];
 const pipelineOrder = ["A · Bug Engineer", "D · Sprint Planner", "B · Revenue", "C · Marketing"];
 
+const rolePermissions = [
+  { name: "Operator", deploy: "approval", message: "approval", purchase: "approval", repoWrite: "allowed" },
+  { name: "Bug Engineer", deploy: "denied", message: "denied", purchase: "denied", repoWrite: "allowed" },
+  { name: "Revenue Officer", deploy: "denied", message: "approval", purchase: "approval", repoWrite: "denied" },
+  { name: "Marketing Operator", deploy: "denied", message: "approval", purchase: "approval", repoWrite: "denied" },
+] as const;
+
 function badgeClass(status: Agent["status"]) {
   if (status === "Working") return "border-emerald-500/30 bg-emerald-500/15 text-emerald-300";
   if (status === "Needs Review") return "border-amber-500/30 bg-amber-500/15 text-amber-300";
@@ -221,7 +221,10 @@ export default async function Home() {
           <p className="mt-3 max-w-4xl text-zinc-300">
             Active execution mode enabled. Pipeline order confirmed: <strong>A → D → B → C</strong>.
           </p>
-          <p className="mt-2 text-xs text-zinc-500">Live snapshot refreshed: {lastUpdated} (America/Chicago)</p>
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <p className="text-xs text-zinc-500">Live snapshot refreshed: {lastUpdated} (America/Chicago)</p>
+            <LiveOpsControls />
+          </div>
         </header>
 
         <section className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
@@ -271,6 +274,11 @@ export default async function Home() {
             </article>
           </div>
         </section>
+
+
+        <OpsPulse events={live.events} approvals={live.approvals} />
+
+        <TaskOrchestratorCard ranked={live.rankedTasks} />
 
         <section className="grid gap-4 md:grid-cols-4">
           <Stat label="Execution Mode" value="Active Workflows" />
@@ -332,21 +340,14 @@ export default async function Home() {
           </div>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-3">
-          <article className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
-            <h2 className="text-lg font-semibold">Repository Workspaces</h2>
-            <div className="mt-4 space-y-3">
-              {repoCards.map((repo) => (
-                <div key={repo.name} className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-4">
-                  <p className="font-medium">{repo.name}</p>
-                  <p className="mt-1 text-xs text-zinc-400">{repo.url}</p>
-                  <p className="mt-2 text-sm text-zinc-300">Status: {repo.status}</p>
-                  <p className="text-sm text-zinc-300">Workflow: {repo.workflow}</p>
-                </div>
-              ))}
-            </div>
-          </article>
+        <RepoDependencyBoard
+          repositories={live.repoGraph.repositories}
+          dependencies={live.repoGraph.dependencies}
+        />
 
+        <PermissionsMatrix roles={[...rolePermissions]} />
+
+        <section className="grid gap-4 md:grid-cols-2">
           <article className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
             <h2 className="text-lg font-semibold">Execution Queue</h2>
             <div className="mt-4 space-y-3">
@@ -387,6 +388,12 @@ export default async function Home() {
             </div>
           </article>
         </section>
+
+        <PRReadinessBoard prs={live.prReadiness} />
+
+        <PolicyGuardrails />
+
+        <HaushavnOnboardingCard />
 
         <EventTimeline events={live.events} />
 

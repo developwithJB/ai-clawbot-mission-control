@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveApproval } from "@/lib/approvals";
+import { appendEvent } from "@/lib/events";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -13,7 +14,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!updated) {
       return NextResponse.json({ error: "Approval item not found" }, { status: 404 });
     }
-    return NextResponse.json({ approval: updated });
+
+    const eventId = `evt-${Date.now()}`;
+    await appendEvent({
+      id: eventId,
+      agent: "Operator",
+      pipeline: "D",
+      type: "approval",
+      summary: `${body.status.toUpperCase()}: ${updated.item}`,
+      timestamp: new Date().toISOString(),
+    });
+
+    return NextResponse.json({ approval: updated, eventId });
   } catch {
     return NextResponse.json({ error: "Failed to update approval" }, { status: 500 });
   }

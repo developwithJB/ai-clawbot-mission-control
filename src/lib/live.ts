@@ -3,6 +3,8 @@ import { promisify } from "node:util";
 import { readEvents } from "@/lib/events";
 import { readRepoGraph } from "@/lib/repositories";
 import { readApprovals } from "@/lib/approvals";
+import { rankTasks, readTasks } from "@/lib/tasks";
+import { scorePrReadiness } from "@/lib/pr-risk";
 
 type EventItem = {
   id: string;
@@ -28,6 +30,8 @@ export type LiveOpsSnapshot = {
   shippedToday: { who: string; summary: string; when: string }[];
   top3: { title: string; tier: "Tier 1" | "Tier 2" | "Tier 3"; why: string }[];
   events: EventItem[];
+  rankedTasks: { id: string; title: string; tier: "Tier 1" | "Tier 2" | "Tier 3"; status: "inbox" | "planned" | "doing" | "blocked" | "review" | "done"; owner: string }[];
+  prReadiness: { number: number; title: string; url: string; risk: "Low" | "Medium" | "High"; reason: string }[];
   repoGraph: {
     repositories: {
       id: string;
@@ -56,7 +60,7 @@ async function ghJson<T>(args: string[]): Promise<{ data: T | null; error?: stri
 }
 
 export async function getLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
-  const [issueRes, prRes, events, repoGraph, approvals] = await Promise.all([
+  const [issueRes, prRes, events, repoGraph, approvals, tasks] = await Promise.all([
     ghJson<GitHubItem[]>([
       "issue",
       "list",
@@ -84,6 +88,7 @@ export async function getLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
     readEvents(),
     readRepoGraph(),
     readApprovals(),
+    readTasks(),
   ]);
 
   const seededTop3: LiveOpsSnapshot["top3"] = [
@@ -105,6 +110,7 @@ export async function getLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
   ];
 
   const githubError = issueRes.error ?? prRes.error;
+  const prReadiness = scorePrReadiness(prRes.data ?? []);
 
   return {
     github: {
@@ -121,6 +127,8 @@ export async function getLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
     ],
     top3: seededTop3,
     events,
+    rankedTasks: rankTasks(tasks),
+    prReadiness,
     repoGraph,
   };
 }
