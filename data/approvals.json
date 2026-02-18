@@ -1,0 +1,18 @@
+[
+  {
+    "id": "appr-001",
+    "item": "Deploy production config change",
+    "reason": "Gateway-level behavior adjustment requested",
+    "level": "High",
+    "status": "pending",
+    "createdAt": "2026-02-18T04:15:00.000Z"
+  },
+  {
+    "id": "appr-002",
+    "item": "Send outbound stakeholder update",
+    "reason": "Outbound messaging requires explicit approval",
+    "level": "High",
+    "status": "pending",
+    "createdAt": "2026-02-18T04:16:00.000Z"
+  }
+]

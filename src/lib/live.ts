@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { readEvents } from "@/lib/events";
 import { readRepoGraph } from "@/lib/repositories";
+import { readApprovals } from "@/lib/approvals";
 
 type EventItem = {
   id: string;
@@ -19,7 +20,7 @@ type GitHubItem = { number: number; title: string; url: string; labels?: { name:
 export type LiveOpsSnapshot = {
   openIssues: GitHubItem[];
   openPrs: GitHubItem[];
-  approvals: { item: string; reason: string; level: "High" | "Medium" }[];
+  approvals: { id: string; item: string; reason: string; level: "High" | "Medium"; status: "pending" | "approved" | "rejected" }[];
   shippedToday: { who: string; summary: string; when: string }[];
   top3: { title: string; tier: "Tier 1" | "Tier 2" | "Tier 3"; why: string }[];
   events: EventItem[];
@@ -51,7 +52,7 @@ async function ghJson<T>(args: string[]): Promise<T | null> {
 }
 
 export async function getLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
-  const [openIssues, openPrs, events, repoGraph] = await Promise.all([
+  const [openIssues, openPrs, events, repoGraph, approvals] = await Promise.all([
     ghJson<GitHubItem[]>([
       "issue",
       "list",
@@ -78,6 +79,7 @@ export async function getLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
     ]),
     readEvents(),
     readRepoGraph(),
+    readApprovals(),
   ]);
 
   const seededTop3: LiveOpsSnapshot["top3"] = [
@@ -101,11 +103,7 @@ export async function getLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
   return {
     openIssues: openIssues ?? [],
     openPrs: openPrs ?? [],
-    approvals: [
-      { item: "Deployments", reason: "Explicit JB approval required", level: "High" },
-      { item: "Outbound Messages", reason: "Explicit JB approval required", level: "High" },
-      { item: "Purchases", reason: "Explicit JB approval required", level: "High" },
-    ],
+    approvals,
     shippedToday: [
       { who: "Bug Engineer", summary: "Initialized label taxonomy + seeded issues", when: "Today" },
       { who: "Operator", summary: "Created 3-day sprint + decision audit log", when: "Today" },
