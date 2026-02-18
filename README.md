@@ -94,6 +94,16 @@ Mission Control no longer writes operational state to `data/`.
 - `POST /api/telegram/notify`
 - `GET /api/telegram/feed`
 
+`POST /api/telegram/notify` supports:
+- raw send: `{ type, message, meta? }`
+- typed templates: `{ templateType, payload, meta? }`
+
+Template types:
+- `approval_requested`
+- `approval_decided`
+- `daily_pulse`
+- `wrench_alert`
+
 These routes support timeline visibility and governance workflows.
 
 ---
