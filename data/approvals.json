@@ -1,0 +1,26 @@
+[
+  {
+    "id": "appr-001",
+    "item": "Deploy production config change",
+    "reason": "Gateway-level behavior adjustment requested",
+    "level": "High",
+    "status": "pending",
+    "createdAt": "2026-02-17T21:00:00.000Z"
+  },
+  {
+    "id": "appr-002",
+    "item": "Send outbound stakeholder update",
+    "reason": "Outbound messaging requires explicit approval",
+    "level": "High",
+    "status": "pending",
+    "createdAt": "2026-02-17T21:15:00.000Z"
+  },
+  {
+    "id": "appr-003",
+    "item": "Purchase third-party monitoring add-on",
+    "reason": "Any purchase requires explicit approval",
+    "level": "High",
+    "status": "pending",
+    "createdAt": "2026-02-17T21:25:00.000Z"
+  }
+]
