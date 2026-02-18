@@ -10,6 +10,7 @@ import { TaskOrchestratorCard } from "@/components/hq/TaskOrchestratorCard";
 import { PRReadinessBoard } from "@/components/hq/PRReadinessBoard";
 import { PolicyGuardrails } from "@/components/hq/PolicyGuardrails";
 import { HaushavnOnboardingCard } from "@/components/hq/HaushavnOnboardingCard";
+import { UnitSystemCard } from "@/components/hq/UnitSystemCard";
 import { getLiveOpsSnapshot } from "@/lib/live";
 
 type Agent = {
@@ -277,6 +278,8 @@ export default async function Home() {
 
 
         <OpsPulse events={live.events} approvals={live.approvals} />
+
+        <UnitSystemCard />
 
         <TaskOrchestratorCard ranked={live.rankedTasks} />
 

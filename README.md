@@ -59,9 +59,11 @@ Cross-repo visibility including:
 ## 7) Audit-First Docs
 Operational docs included:
 - Working Agreement v1
+- Mission Control Unit System v1 (identity layer)
 - Operator runbook
 - sprint docs
 - decision log
+- unit governance gap audits
 
 ---
 
