@@ -3,6 +3,7 @@ import { ApprovalInbox } from "@/components/hq/ApprovalInbox";
 import { EventTimeline } from "@/components/hq/EventTimeline";
 import { GitHubLivePanel } from "@/components/hq/GitHubLivePanel";
 import { RepoDependencyBoard } from "@/components/hq/RepoDependencyBoard";
+import { LiveOpsControls } from "@/components/hq/LiveOpsControls";
 import { getLiveOpsSnapshot } from "@/lib/live";
 
 type Agent = {
@@ -207,7 +208,10 @@ export default async function Home() {
           <p className="mt-3 max-w-4xl text-zinc-300">
             Active execution mode enabled. Pipeline order confirmed: <strong>A → D → B → C</strong>.
           </p>
-          <p className="mt-2 text-xs text-zinc-500">Live snapshot refreshed: {lastUpdated} (America/Chicago)</p>
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <p className="text-xs text-zinc-500">Live snapshot refreshed: {lastUpdated} (America/Chicago)</p>
+            <LiveOpsControls />
+          </div>
         </header>
 
         <section className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
@@ -265,7 +269,12 @@ export default async function Home() {
           <Stat label="Risk Posture" value="Guarded" />
         </section>
 
-        <GitHubLivePanel openIssues={live.openIssues} openPrs={live.openPrs} />
+        <GitHubLivePanel
+          openIssues={live.github.openIssues}
+          openPrs={live.github.openPrs}
+          status={live.github.status}
+          error={live.github.error}
+        />
 
         <section className="grid gap-4 md:grid-cols-2">
           <ApprovalInbox approvals={live.approvals} />

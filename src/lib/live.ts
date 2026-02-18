@@ -18,8 +18,12 @@ const execFileAsync = promisify(execFile);
 type GitHubItem = { number: number; title: string; url: string; labels?: { name: string }[] };
 
 export type LiveOpsSnapshot = {
-  openIssues: GitHubItem[];
-  openPrs: GitHubItem[];
+  github: {
+    openIssues: GitHubItem[];
+    openPrs: GitHubItem[];
+    status: "ok" | "degraded";
+    error?: string;
+  };
   approvals: { id: string; item: string; reason: string; level: "High" | "Medium"; status: "pending" | "approved" | "rejected" }[];
   shippedToday: { who: string; summary: string; when: string }[];
   top3: { title: string; tier: "Tier 1" | "Tier 2" | "Tier 3"; why: string }[];
@@ -42,17 +46,17 @@ export type LiveOpsSnapshot = {
   };
 };
 
-async function ghJson<T>(args: string[]): Promise<T | null> {
+async function ghJson<T>(args: string[]): Promise<{ data: T | null; error?: string }> {
   try {
     const { stdout } = await execFileAsync("gh", args, { timeout: 7000 });
-    return JSON.parse(stdout) as T;
-  } catch {
-    return null;
+    return { data: JSON.parse(stdout) as T };
+  } catch (error) {
+    return { data: null, error: error instanceof Error ? error.message : "Unknown GitHub error" };
   }
 }
 
 export async function getLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
-  const [openIssues, openPrs, events, repoGraph, approvals] = await Promise.all([
+  const [issueRes, prRes, events, repoGraph, approvals] = await Promise.all([
     ghJson<GitHubItem[]>([
       "issue",
       "list",
@@ -100,9 +104,15 @@ export async function getLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
     },
   ];
 
+  const githubError = issueRes.error ?? prRes.error;
+
   return {
-    openIssues: openIssues ?? [],
-    openPrs: openPrs ?? [],
+    github: {
+      openIssues: issueRes.data ?? [],
+      openPrs: prRes.data ?? [],
+      status: githubError ? "degraded" : "ok",
+      error: githubError,
+    },
     approvals,
     shippedToday: [
       { who: "Bug Engineer", summary: "Initialized label taxonomy + seeded issues", when: "Today" },
