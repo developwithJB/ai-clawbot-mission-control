@@ -8,18 +8,46 @@ type Approval = {
   reason: string;
   level: "High" | "Medium";
   status: "pending" | "approved" | "rejected";
+  version: number;
+};
+
+type ApprovalsResponse = {
+  approvals: Approval[];
+};
+
+type PatchResponse = {
+  approval: Approval;
 };
 
 export function ApprovalInbox({ approvals }: { approvals: Approval[] }) {
   const [items, setItems] = useState(approvals);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   const pendingCount = useMemo(() => items.filter((i) => i.status === "pending").length, [items]);
 
+  const refetchApprovals = async () => {
+    const res = await fetch("/api/approvals", { method: "GET", cache: "no-store" });
+    if (!res.ok) throw new Error("Failed to refetch approvals");
+    const data = (await res.json()) as ApprovalsResponse;
+    setItems(data.approvals ?? []);
+  };
+
+  const showToast = (message: string) => {
+    setToast(message);
+    setTimeout(() => {
+      setToast((current) => (current === message ? null : current));
+    }, 3500);
+  };
+
   const updateStatus = async (id: string, status: "approved" | "rejected") => {
+    const current = items.find((item) => item.id === id);
+    if (!current) return;
+
     setBusyId(id);
     setError(null);
+
     const previous = items;
     setItems((prev) => prev.map((item) => (item.id === id ? { ...item, status } : item)));
 
@@ -27,9 +55,21 @@ export function ApprovalInbox({ approvals }: { approvals: Approval[] }) {
       const res = await fetch(`/api/approvals/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, version: current.version }),
       });
+
+      if (res.status === 409) {
+        await refetchApprovals();
+        showToast("Approval was updated elsewhere. Refreshed to latest state.");
+        return;
+      }
+
       if (!res.ok) throw new Error("Failed to persist approval action");
+
+      const data = (await res.json()) as PatchResponse;
+      if (data?.approval) {
+        setItems((prev) => prev.map((item) => (item.id === data.approval.id ? data.approval : item)));
+      }
     } catch {
       setItems(previous);
       setError("Could not save approval action. State rolled back.");
@@ -45,6 +85,9 @@ export function ApprovalInbox({ approvals }: { approvals: Approval[] }) {
         <span className="rounded-full border border-zinc-700 px-2 py-1 text-xs text-zinc-300">Pending {pendingCount}</span>
       </div>
 
+      {toast ? (
+        <p className="mt-2 rounded border border-amber-700/40 bg-amber-950/20 px-3 py-2 text-xs text-amber-200">{toast}</p>
+      ) : null}
       {error ? <p className="mt-2 rounded border border-rose-700/50 bg-rose-950/20 px-3 py-2 text-xs text-rose-300">{error}</p> : null}
       <ul className="mt-3 space-y-2 text-sm text-zinc-300">
         {items.map((a) => (
