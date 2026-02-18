@@ -1,6 +1,17 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { readEvents } from "@/lib/events";
+import { readRepoGraph } from "@/lib/repositories";
 import { readApprovals } from "@/lib/approvals";
+
+type EventItem = {
+  id: string;
+  agent: string;
+  pipeline: "A" | "B" | "C" | "D";
+  type: "decision" | "delivery" | "integration" | "approval";
+  summary: string;
+  timestamp: string;
+};
 
 const execFileAsync = promisify(execFile);
 
@@ -16,6 +27,23 @@ export type LiveOpsSnapshot = {
   approvals: { id: string; item: string; reason: string; level: "High" | "Medium"; status: "pending" | "approved" | "rejected" }[];
   shippedToday: { who: string; summary: string; when: string }[];
   top3: { title: string; tier: "Tier 1" | "Tier 2" | "Tier 3"; why: string }[];
+  events: EventItem[];
+  repoGraph: {
+    repositories: {
+      id: string;
+      name: string;
+      url: string;
+      tier: "Tier 1" | "Tier 2" | "Tier 3";
+      status: "active" | "pending-access" | "paused";
+      health: "green" | "yellow" | "red";
+    }[];
+    dependencies: {
+      from: string;
+      to: string;
+      type: "playbook-transfer" | "blocked-by" | "feeds";
+      note: string;
+    }[];
+  };
 };
 
 async function ghJson<T>(args: string[]): Promise<{ data: T | null; error?: string }> {
@@ -28,7 +56,7 @@ async function ghJson<T>(args: string[]): Promise<{ data: T | null; error?: stri
 }
 
 export async function getLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
-  const [issueRes, prRes, approvals] = await Promise.all([
+  const [issueRes, prRes, events, repoGraph, approvals] = await Promise.all([
     ghJson<GitHubItem[]>([
       "issue",
       "list",
@@ -53,6 +81,8 @@ export async function getLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
       "--json",
       "number,title,url,labels",
     ]),
+    readEvents(),
+    readRepoGraph(),
     readApprovals(),
   ]);
 
@@ -90,5 +120,7 @@ export async function getLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
       { who: "Ops", summary: "Migrated morning brief delivery to Telegram", when: "Today" },
     ],
     top3: seededTop3,
+    events,
+    repoGraph,
   };
 }

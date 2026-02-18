@@ -1,0 +1,26 @@
+[
+  {
+    "id": "evt-001",
+    "agent": "Operator",
+    "pipeline": "D",
+    "type": "decision",
+    "summary": "Activated 3-day sprint horizon and queued execution order A → D → B → C",
+    "timestamp": "2026-02-17T23:25:00.000Z"
+  },
+  {
+    "id": "evt-002",
+    "agent": "Bug Engineer",
+    "pipeline": "A",
+    "type": "delivery",
+    "summary": "Initialized labels and seeded foundational issues #11, #12, #13",
+    "timestamp": "2026-02-17T23:29:00.000Z"
+  },
+  {
+    "id": "evt-003",
+    "agent": "Ops",
+    "pipeline": "D",
+    "type": "integration",
+    "summary": "Migrated morning brief delivery from iMessage to Telegram",
+    "timestamp": "2026-02-18T01:59:00.000Z"
+  }
+]
