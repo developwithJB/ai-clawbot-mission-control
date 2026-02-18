@@ -28,6 +28,9 @@ const execFileAsync = promisify(execFile);
 
 type GitHubItem = { number: number; title: string; url: string; labels?: { name: string }[] };
 
+type AskImpact = "Revenue" | "Stability" | "Growth" | "Governance";
+type AskType = "approval" | "blocker" | "wrench";
+
 export type LiveOpsSnapshot = {
   github: {
     openIssues: GitHubItem[];
@@ -35,11 +38,11 @@ export type LiveOpsSnapshot = {
     status: "ok" | "degraded";
     error?: string;
   };
-  approvals: { id: string; item: string; reason: string; level: "High" | "Medium"; status: "pending" | "approved" | "rejected"; version: number }[];
+  approvals: { id: string; item: string; reason: string; level: "High" | "Medium"; status: "pending" | "approved" | "rejected"; version: number; createdAt: string }[];
   shippedToday: { who: string; summary: string; when: string }[];
   top3: { title: string; tier: "Tier 1" | "Tier 2" | "Tier 3"; why: string }[];
   events: EventItem[];
-  rankedTasks: { id: string; title: string; tier: "Tier 1" | "Tier 2" | "Tier 3"; status: "inbox" | "planned" | "doing" | "blocked" | "review" | "done"; owner: string }[];
+  rankedTasks: { id: string; title: string; tier: "Tier 1" | "Tier 2" | "Tier 3"; status: "inbox" | "planned" | "doing" | "blocked" | "review" | "done"; owner: string; createdAt?: string; updatedAt?: string }[];
   prReadiness: { number: number; title: string; url: string; risk: "Low" | "Medium" | "High"; reason: string }[];
   repoGraph: {
     repositories: {
@@ -71,6 +74,26 @@ export type LiveOpsSnapshot = {
     wrenchChips: { reason: string; lane: string }[];
     telegramFeed: { id: string; type: string; status: "queued" | "sent" | "failed"; message: string; createdAt: string }[];
   };
+  asks: {
+    cap: number;
+    total: number;
+    overflow: number;
+    items: {
+      id: string;
+      type: AskType;
+      title: string;
+      detail: string;
+      impact: AskImpact;
+      requiredBy: string;
+      approvalId?: string;
+      blockerTaskId?: string;
+      objection?: string;
+    }[];
+  };
+  sla: {
+    approvals: { oldestHours: number; status: "ok" | "warn" | "breach" };
+    blockers: { oldestHours: number; status: "ok" | "warn" | "breach" };
+  };
 };
 
 async function ghJson<T>(args: string[]): Promise<{ data: T | null; error?: string }> {
@@ -80,6 +103,18 @@ async function ghJson<T>(args: string[]): Promise<{ data: T | null; error?: stri
   } catch (error) {
     return { data: null, error: error instanceof Error ? error.message : "Unknown GitHub error" };
   }
+}
+
+function hoursSince(iso?: string): number {
+  if (!iso) return 0;
+  const ms = Date.now() - new Date(iso).getTime();
+  return Math.max(0, Math.floor(ms / (1000 * 60 * 60)));
+}
+
+function toSlaStatus(hours: number, warnAt: number, breachAt: number): "ok" | "warn" | "breach" {
+  if (hours >= breachAt) return "breach";
+  if (hours >= warnAt) return "warn";
+  return "ok";
 }
 
 export async function getLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
@@ -125,6 +160,54 @@ export async function getLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
     createdAt: n.createdAt,
   }));
 
+  const pendingApprovals = approvals.filter((a) => a.status === "pending");
+  const oldestApprovalHours = pendingApprovals.length
+    ? Math.max(...pendingApprovals.map((a) => hoursSince(a.createdAt)))
+    : 0;
+
+  const blockedTasks = rankedTasks.filter((t) => t.status === "blocked");
+  const oldestBlockerHours = blockedTasks.length
+    ? Math.max(...blockedTasks.map((t) => hoursSince(t.updatedAt ?? t.createdAt)))
+    : 0;
+
+  const rawAsks: LiveOpsSnapshot["asks"]["items"] = [
+    ...pendingApprovals.map((a) => ({
+      id: `ask-approval-${a.id}`,
+      type: "approval" as const,
+      title: `Decision needed: ${a.item}`,
+      detail: `${a.reason} · risk ${a.level}`,
+      impact: "Governance" as const,
+      requiredBy: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+      approvalId: a.id,
+    })),
+    ...blockedTasks.map((t) => ({
+      id: `ask-blocker-${t.id}`,
+      type: "blocker" as const,
+      title: `Unblock: ${t.title}`,
+      detail: `Owner: ${t.owner} · ${t.tier}`,
+      impact: "Stability" as const,
+      requiredBy: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
+      blockerTaskId: t.id,
+    })),
+    ...wrenchChips.map((w, idx) => ({
+      id: `ask-wrench-${idx}`,
+      type: "wrench" as const,
+      title: "Wrench objection requires answer",
+      detail: w.reason,
+      impact: "Governance" as const,
+      requiredBy: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
+      objection: w.reason,
+    })),
+  ];
+
+  const askCap = 3;
+  const asks = {
+    cap: askCap,
+    total: rawAsks.length,
+    overflow: Math.max(0, rawAsks.length - askCap),
+    items: rawAsks.slice(0, askCap),
+  };
+
   const githubError = issueRes.error ?? prRes.error;
   const prReadiness = scorePrReadiness(prRes.data ?? []);
 
@@ -159,6 +242,11 @@ export async function getLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
       ],
       wrenchChips,
       telegramFeed,
+    },
+    asks,
+    sla: {
+      approvals: { oldestHours: oldestApprovalHours, status: toSlaStatus(oldestApprovalHours, 8, 24) },
+      blockers: { oldestHours: oldestBlockerHours, status: toSlaStatus(oldestBlockerHours, 6, 18) },
     },
   };
 }
