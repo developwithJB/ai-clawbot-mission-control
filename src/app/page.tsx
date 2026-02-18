@@ -279,7 +279,12 @@ export default async function Home() {
           <Stat label="Risk Posture" value="Guarded" />
         </section>
 
-        <GitHubLivePanel openIssues={live.openIssues} openPrs={live.openPrs} />
+        <GitHubLivePanel
+          openIssues={live.github.openIssues}
+          openPrs={live.github.openPrs}
+          status={live.github.status}
+          error={live.github.error}
+        />
 
         <section className="grid gap-4 md:grid-cols-2">
           <ApprovalInbox approvals={live.approvals} />
