@@ -169,6 +169,14 @@ Recent PR chain:
 
 ---
 
+## Architecture Direction
+
+We are transitioning from local file-backed state to a durable state backbone.
+
+- Current: JSON files in `data/`
+- Next: SQL-backed operational store (`db/schema.sql`)
+- Goal: reliable multi-user collaboration and auditability
+
 ## Near-Term Roadmap
 
 1. Real-time update channel (or polling cadence controls)
