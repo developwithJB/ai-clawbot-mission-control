@@ -13,19 +13,26 @@ type Approval = {
 export function ApprovalInbox({ approvals }: { approvals: Approval[] }) {
   const [items, setItems] = useState(approvals);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const pendingCount = useMemo(() => items.filter((i) => i.status === "pending").length, [items]);
 
   const updateStatus = async (id: string, status: "approved" | "rejected") => {
     setBusyId(id);
+    setError(null);
+    const previous = items;
+    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, status } : item)));
+
     try {
       const res = await fetch(`/api/approvals/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
       });
-      if (!res.ok) return;
-      setItems((prev) => prev.map((item) => (item.id === id ? { ...item, status } : item)));
+      if (!res.ok) throw new Error("Failed to persist approval action");
+    } catch {
+      setItems(previous);
+      setError("Could not save approval action. State rolled back.");
     } finally {
       setBusyId(null);
     }
@@ -38,6 +45,7 @@ export function ApprovalInbox({ approvals }: { approvals: Approval[] }) {
         <span className="rounded-full border border-zinc-700 px-2 py-1 text-xs text-zinc-300">Pending {pendingCount}</span>
       </div>
 
+      {error ? <p className="mt-2 rounded border border-rose-700/50 bg-rose-950/20 px-3 py-2 text-xs text-rose-300">{error}</p> : null}
       <ul className="mt-3 space-y-2 text-sm text-zinc-300">
         {items.map((a) => (
           <li key={a.id} className="rounded-lg border border-zinc-800 bg-zinc-950/50 p-3">

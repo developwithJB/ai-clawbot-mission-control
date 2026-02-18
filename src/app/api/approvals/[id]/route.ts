@@ -15,8 +15,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: "Approval item not found" }, { status: 404 });
     }
 
+    const eventId = `evt-${Date.now()}`;
     await appendEvent({
-      id: `evt-${Date.now()}`,
+      id: eventId,
       agent: "Operator",
       pipeline: "D",
       type: "approval",
@@ -24,7 +25,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       timestamp: new Date().toISOString(),
     });
 
-    return NextResponse.json({ approval: updated });
+    return NextResponse.json({ approval: updated, eventId });
   } catch {
     return NextResponse.json({ error: "Failed to update approval" }, { status: 500 });
   }
