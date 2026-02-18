@@ -198,6 +198,25 @@ Phase 1 is complete: Mission Control now uses a SQL-backed operational store wit
   - `src/lib/services/eventService.ts`
   - `src/lib/services/repositoryService.ts`
 
+### Dev Harness: Approval Race + 409 Recovery
+
+To validate double-approve concurrency behavior end-to-end:
+
+```bash
+node scripts/approval-race-harness.mjs
+```
+
+Optional base URL override:
+
+```bash
+BASE_URL=http://localhost:3000 node scripts/approval-race-harness.mjs
+```
+
+The harness asserts:
+- exactly one PATCH succeeds and one returns `409`
+- targeted recovery via `GET /api/approvals/:id` returns latest approval/version
+- append-only `approval_decided` audit event is written with actor and trace metadata
+
 ## Near-Term Roadmap
 
 1. Real-time update channel (or polling cadence controls)
