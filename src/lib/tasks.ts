@@ -8,15 +8,26 @@ export type TaskItem = {
   tier: Tier;
   status: TaskStatus;
   owner: string;
-  createdAt?: string;
+  deadline?: string;
+  blocker?: string;
+  nextAction?: string;
   updatedAt?: string;
 };
 
 const filePath = path.join(process.cwd(), "data", "tasks.json");
 
-const now = new Date().toISOString();
 const seed: TaskItem[] = [
-  { id: "task-seed", title: "Seed task", tier: "Tier 1", status: "inbox", owner: "Operator", createdAt: now, updatedAt: now },
+  {
+    id: "task-seed",
+    title: "Ship Tier-1 Mission Control surfaces",
+    tier: "Tier 1",
+    status: "doing",
+    owner: "Operator",
+    deadline: new Date(Date.now() + 86400000).toISOString(),
+    blocker: "",
+    nextAction: "Implement task board + memory + team + calendar reliability",
+    updatedAt: new Date().toISOString(),
+  },
 ];
 
 export async function readTasks(): Promise<TaskItem[]> {

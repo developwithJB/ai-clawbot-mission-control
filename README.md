@@ -1,173 +1,311 @@
-# JB’s Personal AI Team Mission Control ⚙️
+# AI Clawbot Mission Control
 
-Welcome to the operating system behind JB’s AI team.
+Mission Control is the collaborative operations HQ for JB’s AI team.
 
-This repo is a practical example of how to run a **multi-agent personal mission control** with:
-- clear priorities,
-- explicit governance,
-- fast execution loops,
-- human decision checkpoints,
-- and a dashboard that stays useful on busy days.
-
-If you’re building your own AI command center, you can either:
-1. **Clone and run this directly**, or
-2. **Borrow patterns** (unit governance, ask inbox, approval gates, audit trails, Telegram outbox).
+It is designed to make strategy and execution visible in one place:
+- what agents are doing now,
+- what needs approval,
+- what shipped,
+- what is blocked,
+- and what moves Tier 1 priorities forward.
 
 ---
 
-## Why this exists
+## Purpose
 
-Most AI stacks fail because they optimize for output, not control.
+This workspace supports high-agency execution across JB’s priority ladder:
 
-Mission Control is designed to answer, at a glance:
-- What matters right now?
-- What does JB need to decide?
-- What was completed?
-- What’s next?
-- Are we drifting from Tier 1?
+1. **Tier 1:** Haushavn MVP launch readiness
+2. **Tier 2:** AGB Coaching revenue system
+3. **Tier 3:** Dashboard recurring revenue + Controllables growth
 
----
-
-## The Team (Units, Codenames, Roles)
-
-These are the active units in the system:
-
-- **PROD-1 · Compass 🧭**
-  - Product strategy and priority defense
-  - Protects Tier 1 focus
-
-- **OPS-1 · Flow 🌊**
-  - Sprint sequencing and orchestration
-  - Enforces execution order
-
-- **ARCH-1 · Spine 🧬**
-  - Architecture authority
-  - Guards schema boundaries, service boundaries, long-term integrity
-
-- **ENG-1 · Builder 🔨**
-  - Delivery and stability
-  - Builds, fixes, refactors, ships safely
-
-- **GOV-1 · Gatekeeper 🛡**
-  - Governance and risk enforcement
-  - Blocks unsafe actions and enforces approvals
-
-- **REV-1 · Monetizer 💰**
-  - Revenue strategy and monetization alignment
-
-- **GTM-1 · Amplifier 📣**
-  - Marketing and growth distribution
-
-- **CONTRA-1 · Wrench 🧨**
-  - Contrarian stress-test unit
-  - Prevents groupthink and Tier drift before work enters sprint
+Mission Control acts as the coordination layer between planning, delivery, and governance.
 
 ---
 
-## Core principles
+## Current Features
 
-1. **Tier 1 first**
-   - Tier 3 work is blocked if Tier 1 backlog exists.
+## 1) Operator Quick Reference
+At-a-glance operating contract:
+- approval gates,
+- weekly win criteria,
+- pipeline order.
 
-2. **Ask-first landing page**
-   - Dashboard defaults to what JB must decide now.
+## 2) Tasks Board (Live)
+Execution board for proactive collaboration:
+- task owner (`JB` / `Operator` / agent)
+- tier + status tracking
+- deadline, blocker, and next-action fields
+- API-backed updates (`POST /api/tasks`, `PATCH /api/tasks/:id`)
 
-3. **No silent risk**
-   - Sensitive actions require explicit approval.
+## 3) Mission Calendar
+Cron/scheduled-task visibility to verify proactive automation:
+- enabled jobs + schedules
+- next run timestamps
+- reliability signals (error status, consecutive failures, last error)
 
-4. **Append-only governance trail**
-   - Decision events are logged and queryable.
+## 4) Memory Screen + Global Search
+Operational memory visibility:
+- browse `MEMORY.md` + `memory/*.md`
+- search memories in UI
+- global search across events, approvals, tasks, repos, and telegram ops
 
-5. **Telegram as output bus**
-   - Notifications are delivered from an outbox queue (no dropped sends on transient failure).
+## 5) Team Structure Screen
+Digital org chart for recurring units/agents:
+- role + responsibility mapping
+- current status + objective
+- tier alignment + next owner
+
+## 6) GitHub Live Panel
+Live repository intelligence for open issues and PRs with health state:
+- `Healthy` / `Degraded`
+- clear error surface when ingestion fails
+
+## 7) Approvals Inbox (Actionable)
+Governance queue for sensitive actions:
+- persistent approval records
+- Approve / Reject actions in UI
+- API-backed state updates
+
+## 8) Agent Activity Feed + Top 3
+Shows recent delivery momentum and auto-prioritized focus items.
+
+## 9) Event Timeline
+Persistent event stream with filtering by:
+- pipeline
+- agent
+
+## 10) Multi-Repo Dependency View
+Cross-repo visibility including:
+- repository health/status
+- tier alignment
+- dependency edges (e.g., playbook transfer)
+
+## 11) Audit-First Docs
+Operational docs included:
+- Working Agreement v1
+- Mission Control Unit System v1 (identity layer)
+- Operator runbook
+- sprint docs
+- decision log
+- unit governance gap audits
 
 ---
 
-## What’s in the UI
+## Data & Persistence
 
-### Landing (Overview)
-Built for a 15-second scan:
-- active Tier 1 posture
-- approvals pending
-- Wrench objections
-- JB ask inbox (with action buttons)
-- done recently / next up
-- unit board + Telegram preview
+Phase 1 architecture upgrade is now live with a durable SQL backbone:
 
-### Tabs
-- **Decisions**: approvals + event timeline
-- **Execution**: task orchestration + pulse + readiness
-- **Governance**: unit rules + guardrails + permissions
-- **Intel**: GitHub signal + dependency map
+- `db/schema.sql` — canonical schema (SQLite local-first, Postgres-upgradeable)
+- `db/mission-control.sqlite` — local durable state store
+- service layer under `src/lib/services/*` handles approvals, events, and repositories
 
----
+Legacy JSON files are retained for backup/seed only:
 
-## Architecture snapshot
+- `data/approvals.json`
+- `data/events.json`
+- `data/repositories.json`
 
-- Next.js dashboard + API routes
-- Durable SQL backbone (SQLite local-first, Postgres-upgradeable)
-- Service-layer persistence (thin route handlers)
-- Optimistic concurrency on approvals (`version` + `409` conflicts)
-- Approval race harness for conflict/recovery testing
+Mission Control no longer writes operational state to `data/`.
 
 ---
 
-## API highlights
+## API Routes (Current)
 
 - `GET /api/events`
 - `GET /api/approvals`
 - `GET /api/approvals/:id`
 - `PATCH /api/approvals/:id`
-- `POST /api/asks/resolve`
-- `POST /api/policy/check` (now auto-triggers CONTRA-1 on risky strategic decisions)
 - `POST /api/telegram/notify`
 - `GET /api/telegram/feed`
-- `POST /api/web-search` (logs each search event with provider/query/timestamp)
 
-Telegram notify supports:
-- raw payloads, and
-- typed templates (`approval_requested`, `approval_decided`, `daily_pulse`, `wrench_alert`)
+`POST /api/telegram/notify` supports:
+- raw send: `{ type, message, meta? }`
+- typed templates: `{ templateType, payload, meta? }`
+
+Template types:
+- `approval_requested`
+- `approval_decided`
+- `daily_pulse`
+- `wrench_alert`
+
+These routes support timeline visibility and governance workflows.
 
 ---
 
-## Local development
+## Project Structure
+
+```text
+src/
+  app/
+    page.tsx
+    api/
+      events/route.ts
+      approvals/route.ts
+      approvals/[id]/route.ts
+  components/hq/
+    ActivityFeed.tsx
+    ApprovalInbox.tsx
+    EventTimeline.tsx
+    GitHubLivePanel.tsx
+    RepoDependencyBoard.tsx
+  lib/
+    live.ts
+    approvals.ts
+    events.ts
+    repositories.ts
+
+data/
+  approvals.json
+  events.json
+  repositories.json
+
+docs/
+  operations/
+  sprints/
+  audit/
+```
+
+---
+
+## Operating Model
+
+Pipeline sequence currently enforced:
+
+**A → D → B → C**
+- **A:** Bug Engineer
+- **D:** Operator Sprint Planner
+- **B:** Revenue Officer
+- **C:** Marketing
+
+Approval gates (explicit JB approval required):
+- Deployments
+- Outbound messages
+- Purchases
+
+---
+
+## Local Development
+
+If this repo is fully scaffolded with Next.js metadata (e.g., `package.json`), standard run flow is:
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open:
+Then open:
 
 ```text
 http://localhost:3000
 ```
 
----
-
-## Educational paths (if you’re exploring ideas)
-
-If you’re just learning, start here:
-1. `src/lib/unit-governance.ts` → how roles/checks are encoded
-2. `src/lib/services/approvalService.ts` → concurrency-safe approvals + audit events
-3. `src/lib/services/telegramService.ts` → outbox + delivery eventing
-4. `src/app/page.tsx` → ask-first dashboard composition
-5. `scripts/approval-race-harness.mjs` → conflict simulation end-to-end
+> Note: this repo was initialized from subtree history during bootstrap. If you’re missing scaffold files locally, re-sync from the latest pushed branch before running.
 
 ---
 
-## Docs
+## PR Strategy
 
-- `docs/operations/MISSION_CONTROL_UNIT_SYSTEM_v1.md`
-- `docs/audit/UNIT_GAP_AUDIT_2026-02-18.md`
-- `docs/operations/WORKING_AGREEMENT_v1.md`
-- `docs/operations/operator-runbook.md`
+Mission Control is intentionally shipped in small, reviewable increments.
+
+Recent PR chain:
+- PR #1: roadmap + baseline setup
+- PR #2: live ingestion error states + persisted approvals queue
+- PR #3: event timeline + audit visibility API
+- PR #4: multi-repo dependency board
+- PR #5: approval actions + timeline filters + audit event writes
+
+---
+
+## Architecture Direction
+
+Phase 1 is complete: Mission Control now uses a SQL-backed operational store with a service-layer abstraction.
+
+- Current: SQL operational state (`db/schema.sql` + `db/mission-control.sqlite`)
+- Backup compatibility: legacy JSON in `data/` is read-only seed/backup
+- Goal: reliable multi-user collaboration and auditability
+
+### Migration Note (Phase 1)
+
+- API contracts remain intact for existing routes:
+  - `GET /api/events`
+  - `GET /api/approvals`
+  - `PATCH /api/approvals/:id`
+- Approvals now include a `version` column for optimistic concurrency.
+- `PATCH /api/approvals/:id` supports conflict-safe updates and returns `409` on version mismatch when `version` is provided.
+- Route handlers are thin; persistence logic is centralized in:
+  - `src/lib/services/approvalService.ts`
+  - `src/lib/services/eventService.ts`
+  - `src/lib/services/repositoryService.ts`
+
+### Dev Harness: Approval Race + 409 Recovery
+
+To validate double-approve concurrency behavior end-to-end:
+
+```bash
+node scripts/approval-race-harness.mjs
+```
+
+Optional base URL override:
+
+```bash
+BASE_URL=http://localhost:3000 node scripts/approval-race-harness.mjs
+```
+
+The harness asserts:
+- exactly one PATCH succeeds and one returns `409`
+- targeted recovery via `GET /api/approvals/:id` returns latest approval/version
+- append-only `approval_decided` audit event is written with actor and trace metadata
+
+## Near-Term Roadmap
+
+1. Real-time update channel (or polling cadence controls)
+2. Optimistic UI + conflict-safe action locking
+3. Multi-repo task graph with dependency scoring
+4. Haushavn repo onboarding and Tier-1-first routing
+5. Role-based permissions for additional collaborators
 
 ---
 
 ## Ownership
 
 - **Principal:** Justin “JB” Bergeron
-- **System:** Personal AI Team Mission Control
+- **Lead Operator:** Embedded Strategic AI & Execution Engine (⚙️)
 
-This is a living execution system. Clone it, remix it, improve it, and build your own version of disciplined AI operations.
+This is a living system. Expect weekly iteration.
+
+
+## Latest Incremental PR Chain (6–10)
+
+- **PR #6**: live refresh controls + safer approval action locking
+- **PR #7**: optimistic approval updates with rollback safety
+- **PR #8**: ops pulse summary metrics
+- **PR #9**: role permissions matrix
+- **PR #10**: release + break notes (this PR)
+
+### What changed in this tranche
+- Real-time collaboration controls are now visible in the UI
+- Governance actions are safer under failure conditions
+- Leadership gets quick operational pulse metrics
+- Permissions are explicit per team role
+
+---
+
+## Break Procedure (Operator + JB)
+
+When pausing after a shipping sprint:
+
+1. Confirm all open PR links are posted in chat
+2. Confirm stacked base ordering is correct
+3. Leave next-step note in PR #10 body
+4. Resume from highest stack branch next session
+
+
+
+## Haushavn Readiness
+
+A dedicated onboarding playbook is included to accelerate Tier-1 repo takeover:
+
+- `docs/operations/HAUSHAVN_ONBOARDING_KIT.md`
+
+This kit defines access/safety checks, label bootstrap, MVP mapping, and a first 72-hour sprint template.

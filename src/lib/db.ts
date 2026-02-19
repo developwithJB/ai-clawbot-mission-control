@@ -10,12 +10,7 @@ function migrateEventsTable(db: DatabaseSync) {
     .get() as { sql?: string } | undefined;
 
   const createSql = row?.sql ?? "";
-  if (
-    createSql.includes("approval_decided") &&
-    createSql.includes("web_search") &&
-    createSql.includes("request_id") &&
-    createSql.includes("trace_id")
-  ) {
+  if (createSql.includes("approval_decided") && createSql.includes("request_id") && createSql.includes("trace_id")) {
     return;
   }
 
@@ -26,7 +21,7 @@ function migrateEventsTable(db: DatabaseSync) {
         id TEXT PRIMARY KEY,
         agent TEXT NOT NULL,
         pipeline TEXT NOT NULL CHECK (pipeline IN ('A', 'B', 'C', 'D')),
-        type TEXT NOT NULL CHECK (type IN ('decision', 'delivery', 'integration', 'approval', 'approval_decided', 'web_search')),
+        type TEXT NOT NULL CHECK (type IN ('decision', 'delivery', 'integration', 'approval', 'approval_decided')),
         summary TEXT NOT NULL,
         timestamp TEXT NOT NULL,
         approval_id TEXT,

@@ -9,13 +9,185 @@ import { PermissionsMatrix } from "@/components/hq/PermissionsMatrix";
 import { TaskOrchestratorCard } from "@/components/hq/TaskOrchestratorCard";
 import { PRReadinessBoard } from "@/components/hq/PRReadinessBoard";
 import { PolicyGuardrails } from "@/components/hq/PolicyGuardrails";
+import { HaushavnOnboardingCard } from "@/components/hq/HaushavnOnboardingCard";
 import { UnitSystemCard } from "@/components/hq/UnitSystemCard";
 import { UnitBoard } from "@/components/hq/UnitBoard";
-import { JBAskInbox } from "@/components/hq/JBAskInbox";
+import { MissionCalendar } from "@/components/hq/MissionCalendar";
+import { GlobalSearch } from "@/components/hq/GlobalSearch";
+import { MemoryScreen } from "@/components/hq/MemoryScreen";
+import { TeamStructureScreen } from "@/components/hq/TeamStructureScreen";
 import { getLiveOpsSnapshot } from "@/lib/live";
+import { readTasks } from "@/lib/tasks";
+import { listMemoryDocs } from "@/lib/memory";
 
-const views = ["overview", "decisions", "execution", "governance", "intel"] as const;
-type View = (typeof views)[number];
+type Agent = {
+  name: string;
+  role: string;
+  status: "Idle" | "Working" | "Needs Review";
+  focus: string;
+  risk: "Low" | "Medium" | "High";
+};
+
+type Pipeline = {
+  id: "A" | "D" | "B" | "C";
+  name: string;
+  objective: string;
+  status: "Active" | "Queued" | "Planned";
+  owner: string;
+  steps: string[];
+};
+
+const agents: Agent[] = [
+  {
+    name: "Operator",
+    role: "Lead Operator / Orchestration",
+    status: "Working",
+    focus: "Routing execution across pipelines A → D → B → C",
+    risk: "Low",
+  },
+  {
+    name: "Bug Engineer",
+    role: "Issue triage, patch plans, fix workflows",
+    status: "Working",
+    focus: "Pipeline A live: issue intake + execution board",
+    risk: "Medium",
+  },
+  {
+    name: "Revenue Officer",
+    role: "Revenue experiments + funnel progression",
+    status: "Idle",
+    focus: "Queued after Operator Sprint Planner",
+    risk: "Low",
+  },
+  {
+    name: "Marketing Operator",
+    role: "Content + channel distribution engine",
+    status: "Idle",
+    focus: "Queued after Revenue pipeline",
+    risk: "Low",
+  },
+  {
+    name: "Discovery Analyst",
+    role: "CTO intel + strategic discovery",
+    status: "Working",
+    focus: "Support bug triage and sprint prioritization",
+    risk: "Low",
+  },
+  {
+    name: "QA & Security Sentinel",
+    role: "Quality gates + security guardrails",
+    status: "Needs Review",
+    focus: "Approval matrix + safety checks for active workflows",
+    risk: "Medium",
+  },
+];
+
+const pipelines: Pipeline[] = [
+  {
+    id: "A",
+    name: "Bug Engineer Pipeline",
+    objective: "Issue → Repro → Plan → Patch → Verify → Ready for Review",
+    status: "Active",
+    owner: "Bug Engineer",
+    steps: [
+      "Ingest issues from target repo",
+      "Auto-tag severity + impact + tier alignment",
+      "Generate patch plan with acceptance criteria",
+      "Execute in branch-safe workflow",
+      "Run tests + quality checks",
+      "Escalate for Operator/Human approval",
+    ],
+  },
+  {
+    id: "D",
+    name: "Operator Sprint Planner",
+    objective: "Convert priorities into weekly, measurable execution blocks",
+    status: "Queued",
+    owner: "Operator",
+    steps: [
+      "Rank work by Tier score and leverage",
+      "Set sprint outcomes + checkpoints",
+      "Assign owners + dependencies",
+      "Surface blockers daily",
+      "Track progress against target velocity",
+    ],
+  },
+  {
+    id: "B",
+    name: "Revenue Officer Pipeline",
+    objective: "Revenue hypothesis → experiment → conversion gain",
+    status: "Planned",
+    owner: "Revenue Officer",
+    steps: [
+      "Define offer and audience hypothesis",
+      "Deploy funnel experiment",
+      "Track conversion and CAC signals",
+      "Recommend scale/kill decision",
+    ],
+  },
+  {
+    id: "C",
+    name: "Marketing Pipeline",
+    objective: "Message strategy → content engine → distribution loop",
+    status: "Planned",
+    owner: "Marketing Operator",
+    steps: [
+      "Build weekly content map",
+      "Generate channel-specific assets",
+      "Distribute and capture engagement",
+      "Feed high-performing messages to revenue pipeline",
+    ],
+  },
+];
+
+const executionQueue = [
+  {
+    title: "Create issue intake board from repo",
+    owner: "Bug Engineer",
+    state: "Doing",
+    alignment: "Tier 3 now; Tier 1 pattern for Haushavn later",
+  },
+  {
+    title: "Define branch safety + approval gates",
+    owner: "QA & Security Sentinel",
+    state: "Review",
+    alignment: "All tiers",
+  },
+  {
+    title: "Draft sprint capacity model",
+    owner: "Operator",
+    state: "Queued",
+    alignment: "Tier 1/2 leverage",
+  },
+];
+
+type ReviewRisk = "Low" | "Medium" | "High";
+
+const prReviewQueue: { title: string; risk: ReviewRisk; reviewUrl: string }[] = [
+  {
+    title: "feat: harden approval gate retry flow",
+    risk: "High",
+    reviewUrl: "https://github.com/developwithJB/thecontrollables/pull/118",
+  },
+  {
+    title: "fix: normalize webhook payload parser",
+    risk: "Medium",
+    reviewUrl: "https://github.com/developwithJB/thecontrollables/pull/117",
+  },
+  {
+    title: "chore: refresh mission control copy blocks",
+    risk: "Low",
+    reviewUrl: "https://github.com/developwithJB/thecontrollables/pull/116",
+  },
+];
+
+const approvalGates = ["Deployments", "Outbound Messages", "Purchases"];
+const weeklyWinCriteria = [
+  "Haushavn MVP progress (12-week plan)",
+  "Book sales or speaking/workshop bookings",
+  "Faith impact: helped grow someone's relationship with Jesus",
+];
+const pipelineOrder = ["A · Bug Engineer", "D · Sprint Planner", "B · Revenue", "C · Marketing"];
 
 const rolePermissions = [
   { name: "Operator", deploy: "approval", message: "approval", purchase: "approval", repoWrite: "allowed" },
@@ -24,189 +196,265 @@ const rolePermissions = [
   { name: "Marketing Operator", deploy: "denied", message: "approval", purchase: "approval", repoWrite: "denied" },
 ] as const;
 
-export const revalidate = 30;
-
-function normalizeView(value?: string): View {
-  if (!value) return "overview";
-  return (views.includes(value as View) ? value : "overview") as View;
+function badgeClass(status: Agent["status"]) {
+  if (status === "Working") return "border-emerald-500/30 bg-emerald-500/15 text-emerald-300";
+  if (status === "Needs Review") return "border-amber-500/30 bg-amber-500/15 text-amber-300";
+  return "border-zinc-500/30 bg-zinc-500/15 text-zinc-300";
 }
 
-function getDayMode() {
-  const chicagoHour = Number(
-    new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", hour: "2-digit", hour12: false }).format(new Date()),
-  );
-  return chicagoHour < 12 ? "morning" : "evening";
+function pipelineClass(status: Pipeline["status"]) {
+  if (status === "Active") return "border-emerald-500/30 bg-emerald-500/10";
+  if (status === "Queued") return "border-sky-500/30 bg-sky-500/10";
+  return "border-zinc-700 bg-zinc-900/40";
 }
 
-function TabLink({ label, value, current }: { label: string; value: View; current: View }) {
-  const active = current === value;
-  return (
-    <a
-      href={`/?view=${value}`}
-      className={`rounded-full border px-3 py-1.5 text-xs transition ${
-        active
-          ? "border-sky-500/40 bg-sky-500/15 text-sky-200"
-          : "border-zinc-700 bg-zinc-900/50 text-zinc-300 hover:border-zinc-600"
-      }`}
-    >
-      {label}
-    </a>
-  );
+function reviewRiskClass(risk: ReviewRisk) {
+  if (risk === "High") return "border-rose-500/30 bg-rose-500/10 text-rose-300";
+  if (risk === "Medium") return "border-amber-500/30 bg-amber-500/10 text-amber-300";
+  return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
 }
 
-function SlaBadge({ label, hours, status }: { label: string; hours: number; status: "ok" | "warn" | "breach" }) {
-  const cls = status === "breach" ? "border-rose-700/50 text-rose-200" : status === "warn" ? "border-amber-700/50 text-amber-200" : "border-emerald-700/50 text-emerald-200";
-  return <span className={`rounded-full border px-2 py-1 text-xs ${cls}`}>{label} SLA: {hours}h</span>;
-}
+export const revalidate = 60;
 
-export default async function Home({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
-  const live = await getLiveOpsSnapshot();
-  const { view: rawView } = await searchParams;
-  const view = normalizeView(rawView);
-  const dayMode = getDayMode();
-
-  const pendingApprovals = live.approvals.filter((a) => a.status === "pending");
-  const tier1Tasks = live.rankedTasks.filter((t) => t.tier === "Tier 1" && t.status !== "done");
-
-  const doneRecently = live.events.slice(0, 3).map((e) => e.summary);
-  const nextUp = live.rankedTasks.filter((t) => ["planned", "doing", "review"].includes(t.status)).slice(0, 3);
-
+export default async function Home() {
+  const [live, initialTasks, initialMemoryDocs] = await Promise.all([
+    getLiveOpsSnapshot(),
+    readTasks(),
+    listMemoryDocs(),
+  ]);
   const lastUpdated = new Date().toLocaleString("en-US", { timeZone: "America/Chicago" });
+  const searchItems = [
+    ...live.events.map((e) => ({ id: `event-${e.id}`, label: e.summary, context: `${e.agent} · Pipeline ${e.pipeline}`, type: e.type })),
+    ...live.approvals.map((a) => ({ id: `approval-${a.id}`, label: a.item, context: `${a.status} · ${a.reason}`, type: "approval" })),
+    ...live.rankedTasks.map((t) => ({ id: `task-${t.id}`, label: t.title, context: `${t.tier} · ${t.status} · ${t.owner}`, type: "task" })),
+    ...live.repoGraph.repositories.map((r) => ({ id: `repo-${r.id}`, label: r.name, context: `${r.tier} · ${r.status} · ${r.health}`, type: "repo" })),
+    ...live.unitBoard.telegramFeed.map((m) => ({ id: `tg-${m.id}`, label: m.message, context: `${m.status} · ${m.type}`, type: "telegram" })),
+  ];
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-6 md:p-10">
         <header className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6">
           <p className="text-sm uppercase tracking-[0.2em] text-zinc-400">Mission Control</p>
-          <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Operator Landing · {dayMode === "morning" ? "Morning Mode" : "Evening Mode"}</h1>
-          <p className="mt-2 max-w-4xl text-sm text-zinc-300">
-            Ask-first landing with attention budget (max 3 asks/day) and SLA signals. Deep detail stays behind tabs.
+          <h1 className="mt-2 text-3xl font-semibold md:text-4xl">AI Team Headquarters ⚙️</h1>
+          <p className="mt-3 max-w-4xl text-zinc-300">
+            Active execution mode enabled. Pipeline order confirmed: <strong>A → D → B → C</strong>.
           </p>
-          <div className="mt-3 flex items-center justify-between gap-3">
-            <p className="text-xs text-zinc-500">Updated: {lastUpdated} (America/Chicago)</p>
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <p className="text-xs text-zinc-500">Live snapshot refreshed: {lastUpdated} (America/Chicago)</p>
             <LiveOpsControls />
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <SlaBadge label="Approvals" hours={live.sla.approvals.oldestHours} status={live.sla.approvals.status} />
-            <SlaBadge label="Blockers" hours={live.sla.blockers.oldestHours} status={live.sla.blockers.status} />
-          </div>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <TabLink label="Overview" value="overview" current={view} />
-            <TabLink label="Decisions" value="decisions" current={view} />
-            <TabLink label="Execution" value="execution" current={view} />
-            <TabLink label="Governance" value="governance" current={view} />
-            <TabLink label="Intel" value="intel" current={view} />
           </div>
         </header>
 
-        {view === "overview" ? (
-          <>
-            {dayMode === "morning" ? (
-              <JBAskInbox asks={live.asks.items} overflow={live.asks.overflow} />
-            ) : (
-              <section className="grid gap-4 md:grid-cols-2">
-                <article className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
-                  <h2 className="text-lg font-semibold">Done recently</h2>
-                  <ul className="mt-3 space-y-2 text-sm text-zinc-300">
-                    {doneRecently.map((item, idx) => (
-                      <li key={`${item}-${idx}`} className="rounded border border-zinc-800 bg-zinc-950/50 px-3 py-2">{item}</li>
-                    ))}
-                  </ul>
-                </article>
-                <JBAskInbox asks={live.asks.items} overflow={live.asks.overflow} />
-              </section>
-            )}
+        <section className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold">Operator Quick Reference</h2>
+            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300">
+              Active Contract · v1
+            </span>
+          </div>
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
+            <article className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">Approval Gates</p>
+              <ul className="mt-3 space-y-2 text-sm text-zinc-300">
+                {approvalGates.map((gate) => (
+                  <li key={gate} className="flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />
+                    {gate}
+                  </li>
+                ))}
+              </ul>
+            </article>
 
-            <section className="grid gap-4 md:grid-cols-3">
-              <Stat label="Tier 1 Active" value={`${tier1Tasks.length}`} tone="default" />
-              <Stat label="Approvals Pending" value={`${pendingApprovals.length}`} tone={pendingApprovals.length > 0 ? "warn" : "ok"} />
-              <Stat label="Wrench Objections" value={`${live.unitBoard.wrenchChips.length}`} tone={live.unitBoard.wrenchChips.length > 0 ? "warn" : "ok"} />
-            </section>
+            <article className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">Weekly Win Criteria</p>
+              <ul className="mt-3 space-y-2 text-sm text-zinc-300">
+                {weeklyWinCriteria.map((item) => (
+                  <li key={item} className="flex items-start gap-2">
+                    <span className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </article>
 
-            <section className="grid gap-4 md:grid-cols-2">
-              {dayMode === "morning" ? (
-                <article className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
-                  <h2 className="text-lg font-semibold">Next up</h2>
-                  <ul className="mt-3 space-y-2 text-sm text-zinc-300">
-                    {nextUp.map((task) => (
-                      <li key={task.id} className="rounded border border-zinc-800 bg-zinc-950/50 px-3 py-2">
-                        {task.title}
-                        <span className="ml-2 text-xs text-zinc-500">({task.tier} · {task.status})</span>
-                      </li>
-                    ))}
-                  </ul>
-                </article>
-              ) : (
-                <article className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
-                  <h2 className="text-lg font-semibold">Next 24h</h2>
-                  <ul className="mt-3 space-y-2 text-sm text-zinc-300">
-                    {nextUp.map((task) => (
-                      <li key={task.id} className="rounded border border-zinc-800 bg-zinc-950/50 px-3 py-2">
-                        {task.title}
-                        <span className="ml-2 text-xs text-zinc-500">({task.tier} · {task.status})</span>
-                      </li>
-                    ))}
-                  </ul>
-                </article>
-              )}
+            <article className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">Pipeline Order</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {pipelineOrder.map((pipeline) => (
+                  <span
+                    key={pipeline}
+                    className="rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs text-sky-300"
+                  >
+                    {pipeline}
+                  </span>
+                ))}
+              </div>
+            </article>
+          </div>
+        </section>
 
-              <UnitBoard units={live.unitBoard.units} wrenchChips={live.unitBoard.wrenchChips} telegramFeed={live.unitBoard.telegramFeed} />
-            </section>
-          </>
-        ) : null}
 
-        {view === "decisions" ? (
-          <section className="grid gap-4 md:grid-cols-2">
-            <ApprovalInbox approvals={live.approvals} />
-            <EventTimeline events={live.events} />
-          </section>
-        ) : null}
+        <section className="grid gap-4 md:grid-cols-2">
+          <MissionCalendar />
+          <GlobalSearch items={searchItems} />
+        </section>
 
-        {view === "execution" ? (
-          <>
-            <OpsPulse events={live.events} approvals={live.approvals} />
-            <TaskOrchestratorCard ranked={live.rankedTasks} />
-            <PRReadinessBoard prs={live.prReadiness} />
-            <ActivityFeed shippedToday={live.shippedToday} top3={live.top3} />
-          </>
-        ) : null}
+        <OpsPulse events={live.events} approvals={live.approvals} />
 
-        {view === "governance" ? (
-          <>
-            <UnitSystemCard />
-            <PolicyGuardrails />
-            <PermissionsMatrix roles={[...rolePermissions]} />
-          </>
-        ) : null}
+        <UnitSystemCard />
 
-        {view === "intel" ? (
-          <>
-            <GitHubLivePanel
-              openIssues={live.github.openIssues}
-              openPrs={live.github.openPrs}
-              status={live.github.status}
-              error={live.github.error}
-            />
-            <RepoDependencyBoard repositories={live.repoGraph.repositories} dependencies={live.repoGraph.dependencies} />
-          </>
-        ) : null}
+        <UnitBoard
+          units={live.unitBoard.units}
+          wrenchChips={live.unitBoard.wrenchChips}
+          telegramFeed={live.unitBoard.telegramFeed}
+        />
+
+        <TaskOrchestratorCard initialTasks={initialTasks} />
+
+        <MemoryScreen initialDocs={initialMemoryDocs} />
+
+        <TeamStructureScreen units={live.unitBoard.units} />
+
+        <section className="grid gap-4 md:grid-cols-4">
+          <Stat label="Execution Mode" value="Active Workflows" />
+          <Stat label="Current Pipeline" value="A · Bug Engineer" />
+          <Stat label="Next Pipeline" value="D · Sprint Planner" />
+          <Stat label="Risk Posture" value="Guarded" />
+        </section>
+
+        <GitHubLivePanel
+          openIssues={live.github.openIssues}
+          openPrs={live.github.openPrs}
+          status={live.github.status}
+          error={live.github.error}
+        />
+
+        <section className="grid gap-4 md:grid-cols-2">
+          <ApprovalInbox approvals={live.approvals} />
+          <ActivityFeed shippedToday={live.shippedToday} top3={live.top3} />
+        </section>
+
+        <section className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
+          <h2 className="text-lg font-semibold">Pipeline Roadmap</h2>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {pipelines.map((pipeline) => (
+              <article key={pipeline.id} className={`rounded-xl border p-4 ${pipelineClass(pipeline.status)}`}>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">Pipeline {pipeline.id}</p>
+                  <span className="rounded-full border border-zinc-700 px-2 py-1 text-xs text-zinc-300">{pipeline.status}</span>
+                </div>
+                <h3 className="mt-2 font-semibold">{pipeline.name}</h3>
+                <p className="mt-1 text-sm text-zinc-300">{pipeline.objective}</p>
+                <p className="mt-2 text-xs text-zinc-400">Owner: {pipeline.owner}</p>
+                <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-zinc-300">
+                  {pipeline.steps.map((step) => (
+                    <li key={step}>{step}</li>
+                  ))}
+                </ul>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
+          <h2 className="text-lg font-semibold">Agent Live View</h2>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {agents.map((agent) => (
+              <article key={agent.name} className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-semibold">{agent.name}</h3>
+                    <p className="text-sm text-zinc-400">{agent.role}</p>
+                  </div>
+                  <span className={`rounded-full border px-2 py-1 text-xs ${badgeClass(agent.status)}`}>{agent.status}</span>
+                </div>
+                <p className="mt-3 text-sm text-zinc-300">{agent.focus}</p>
+                <p className="mt-2 text-xs text-zinc-400">Risk: {agent.risk}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <RepoDependencyBoard
+          repositories={live.repoGraph.repositories}
+          dependencies={live.repoGraph.dependencies}
+        />
+
+        <PermissionsMatrix roles={[...rolePermissions]} />
+
+        <section className="grid gap-4 md:grid-cols-2">
+          <article className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
+            <h2 className="text-lg font-semibold">Execution Queue</h2>
+            <div className="mt-4 space-y-3">
+              {executionQueue.map((task) => (
+                <div key={task.title} className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-4">
+                  <p className="font-medium">{task.title}</p>
+                  <div className="mt-2 text-sm text-zinc-300">
+                    <p>Owner: {task.owner}</p>
+                    <p>State: {task.state}</p>
+                    <p>Alignment: {task.alignment}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <article className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
+            <h2 className="text-lg font-semibold">PR Review Queue</h2>
+            <div className="mt-4 space-y-2">
+              {prReviewQueue.map((pr) => (
+                <div key={pr.title} className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-medium text-zinc-100">{pr.title}</p>
+                    <span className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide ${reviewRiskClass(pr.risk)}`}>
+                      {pr.risk}
+                    </span>
+                  </div>
+                  <a
+                    className="mt-2 inline-block text-xs text-sky-300 hover:text-sky-200 hover:underline"
+                    href={pr.reviewUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Review PR
+                  </a>
+                </div>
+              ))}
+            </div>
+          </article>
+        </section>
+
+        <PRReadinessBoard prs={live.prReadiness} />
+
+        <PolicyGuardrails />
+
+        <HaushavnOnboardingCard />
+
+        <EventTimeline events={live.events} />
+
+        <section className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
+          <h2 className="text-lg font-semibold">Audit Log</h2>
+          <p className="mt-2 text-sm text-zinc-300">
+            Always-available decision trail: <code className="rounded bg-zinc-950 px-2 py-1">mission-control/docs/audit/decision-log.md</code>
+          </p>
+          <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-zinc-300">
+            <li>Decision 001: Execute Day 1→3 as safe drafts pending approval.</li>
+            <li>Decision 002: `needs-review` label introduced for governance gate.</li>
+            <li>Decision 003: Persistent local audit file established.</li>
+            <li>Decision 004: Event timeline surface added for collaborative visibility.</li>
+          </ul>
+        </section>
       </main>
     </div>
   );
 }
 
-function Stat({ label, value, tone }: { label: string; value: string; tone: "default" | "warn" | "ok" }) {
-  const toneClass =
-    tone === "warn"
-      ? "text-amber-200 border-amber-700/40"
-      : tone === "ok"
-        ? "text-emerald-200 border-emerald-700/40"
-        : "text-zinc-100 border-zinc-800";
-
+function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <article className={`rounded-2xl border bg-zinc-900/60 p-5 ${toneClass}`}>
+    <article className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
       <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">{label}</p>
-      <p className="mt-2 text-2xl font-semibold">{value}</p>
+      <p className="mt-2 text-sm font-medium text-zinc-100">{value}</p>
     </article>
   );
 }
