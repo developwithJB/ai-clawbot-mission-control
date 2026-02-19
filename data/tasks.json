@@ -1,9 +1,57 @@
 [
   {
-    "id": "task-seed",
-    "title": "Seed task",
+    "id": "task-ops-20260219-release-note",
+    "title": "Publish 2026-02-19 Mission Control sprint release notes",
     "tier": "Tier 1",
-    "status": "inbox",
-    "owner": "Operator"
+    "status": "done",
+    "owner": "Operator",
+    "deadline": "2026-02-19T14:30:00.000Z",
+    "blocker": "",
+    "nextAction": "Link note in Audit Log panel and daily brief",
+    "updatedAt": "2026-02-19T14:18:00.000Z"
+  },
+  {
+    "id": "task-eng1-20260219-build-fix",
+    "title": "Fix Mission Control build blocker (node:sqlite type/runtime compatibility)",
+    "tier": "Tier 1",
+    "status": "doing",
+    "owner": "ENG-1",
+    "deadline": "2026-02-19T15:00:00.000Z",
+    "blocker": "Needs validated cross-environment import/type strategy",
+    "nextAction": "Patch db adapter and verify npm run build passes",
+    "updatedAt": "2026-02-19T14:18:00.000Z"
+  },
+  {
+    "id": "task-gov1-20260219-approvals",
+    "title": "Clear high-priority approvals queue (appr-001/appr-002) with decision-ready context",
+    "tier": "Tier 1",
+    "status": "doing",
+    "owner": "GOV-1",
+    "deadline": "2026-02-19T15:00:00.000Z",
+    "blocker": "Pending JB decision",
+    "nextAction": "Prepare one-line approve/reject recommendation per item",
+    "updatedAt": "2026-02-19T14:18:00.000Z"
+  },
+  {
+    "id": "task-ops1-20260219-calendar-hardening",
+    "title": "Add missed-run and retry anomaly indicators to Mission Calendar",
+    "tier": "Tier 1",
+    "status": "planned",
+    "owner": "OPS-1",
+    "deadline": "2026-02-19T16:00:00.000Z",
+    "blocker": "Awaiting ENG-1 build fix before UI polish pass",
+    "nextAction": "Define thresholds and color states then ship",
+    "updatedAt": "2026-02-19T14:18:00.000Z"
+  },
+  {
+    "id": "task-rev1-20260219-content-pipeline-spec",
+    "title": "Draft Tier-2 content pipeline spec tied to AGB revenue outcomes",
+    "tier": "Tier 2",
+    "status": "planned",
+    "owner": "REV-1",
+    "deadline": "2026-02-19T17:00:00.000Z",
+    "blocker": "None",
+    "nextAction": "Propose stages + conversion KPIs + owner handoffs",
+    "updatedAt": "2026-02-19T14:18:00.000Z"
   }
 ]
