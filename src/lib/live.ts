@@ -35,7 +35,7 @@ export type LiveOpsSnapshot = {
     status: "ok" | "degraded";
     error?: string;
   };
-  approvals: { id: string; item: string; reason: string; level: "High" | "Medium"; status: "pending" | "approved" | "rejected"; version: number }[];
+  approvals: { id: string; item: string; reason: string; level: "High" | "Medium"; status: "pending" | "approved" | "rejected"; version: number; createdAt: string }[];
   shippedToday: { who: string; summary: string; when: string }[];
   top3: { title: string; tier: "Tier 1" | "Tier 2" | "Tier 3"; why: string }[];
   events: EventItem[];
@@ -150,7 +150,7 @@ export async function getLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
       units: [
         { code: "PROD-1", codename: "Compass", icon: "🧭", status: "Working", objective: "Protect Tier 1 roadmap integrity", tier: 1, lastUpdate: new Date().toISOString(), nextOwner: "OPS-1" },
         { code: "OPS-1", codename: "Flow", icon: "🌊", status: "Working", objective: "Sequence sprint against Tier ladder", tier: 1, lastUpdate: new Date().toISOString(), nextOwner: "ARCH-1" },
-        { code: "ARCH-1", codename: "Spine", icon: "🧬", status: "Waiting approval", objective: "Validate service boundaries", tier: 1, lastUpdate: new Date().toISOString(), nextOwner: "ENG-1" },
+        { code: "ARCH-1", codename: "Spine", icon: "🧬", status: "Working", objective: "Validate service boundaries (approved with conditions)", tier: 1, lastUpdate: new Date().toISOString(), nextOwner: "ENG-1" },
         { code: "ENG-1", codename: "Builder", icon: "🔨", status: "Working", objective: "Ship stable increments", tier: 1, lastUpdate: new Date().toISOString(), nextOwner: "GOV-1" },
         { code: "GOV-1", codename: "Gatekeeper", icon: "🛡", status: "Idle", objective: "Enforce sensitive action approvals", tier: 1, lastUpdate: new Date().toISOString(), nextOwner: "JB" },
         { code: "REV-1", codename: "Monetizer", icon: "💰", status: "Idle", objective: "Model monetization on shipped value", tier: 2, lastUpdate: new Date().toISOString(), nextOwner: "GTM-1" },

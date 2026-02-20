@@ -25,12 +25,12 @@
     "id": "task-gov1-20260219-approvals",
     "title": "Clear high-priority approvals queue (appr-001/appr-002) with decision-ready context",
     "tier": "Tier 1",
-    "status": "review",
+    "status": "doing",
     "owner": "GOV-1",
     "deadline": "2026-02-19T15:00:00.000Z",
-    "blocker": "Awaiting JB approve/reject decisions on resubmission packets",
-    "nextAction": "Submit appr-001 and appr-002 using completed packets in docs/operations/approval-packets/",
-    "updatedAt": "2026-02-19T15:48:00.000Z"
+    "blocker": "None",
+    "nextAction": "Finalize Spine conditional approval packet + log decision and execution checklist.",
+    "updatedAt": "2026-02-20T07:06:00.000Z"
   },
   {
     "id": "task-ops1-20260219-calendar-hardening",
@@ -53,5 +53,49 @@
     "blocker": "None",
     "nextAction": "Propose stages + conversion KPIs + owner handoffs",
     "updatedAt": "2026-02-19T14:18:00.000Z"
+  },
+  {
+    "id": "task-gov1-20260220-spine-conditional-approval",
+    "title": "Approve ARCH-1 (Spine) with conditions and log governance decision",
+    "tier": "Tier 1",
+    "status": "doing",
+    "owner": "GOV-1",
+    "deadline": "2026-02-20T08:00:00.000Z",
+    "blocker": "None",
+    "nextAction": "Confirm 5 conditions checklist and publish Decision 006 entry.",
+    "updatedAt": "2026-02-20T07:06:00.000Z"
+  },
+  {
+    "id": "task-rev1-20260220-microcapital-ops-sheet",
+    "title": "Build $100 micro-capital operating sheet (Coinbase + Robinhood) with weekly checklist and stop rules",
+    "tier": "Tier 2",
+    "status": "doing",
+    "owner": "REV-1",
+    "deadline": "2026-02-20T09:00:00.000Z",
+    "blocker": "Awaiting final risk tolerance confirmation from JB",
+    "nextAction": "Publish one-page execution sheet in docs/operations/finance/ and link in dashboard.",
+    "updatedAt": "2026-02-20T07:06:00.000Z"
+  },
+  {
+    "id": "task-gtm1-20260220-update-drafts",
+    "title": "Draft 3 outbound update variants for Mission Control progress (internal, stakeholder, public-safe)",
+    "tier": "Tier 2",
+    "status": "planned",
+    "owner": "GTM-1",
+    "deadline": "2026-02-20T09:30:00.000Z",
+    "blocker": "Requires JB approval before sending outbound",
+    "nextAction": "Prepare drafts with audience/channel tags and compliance checks.",
+    "updatedAt": "2026-02-20T07:06:00.000Z"
+  },
+  {
+    "id": "task-contra1-20260220-redteam-spine",
+    "title": "Red-team Spine approval: top 5 failure modes + mitigation controls",
+    "tier": "Tier 1",
+    "status": "doing",
+    "owner": "CONTRA-1",
+    "deadline": "2026-02-20T08:30:00.000Z",
+    "blocker": "None",
+    "nextAction": "Publish concise go/no-go memo tied to Spine conditions.",
+    "updatedAt": "2026-02-20T07:06:00.000Z"
   }
 ]

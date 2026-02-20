@@ -46,6 +46,16 @@ This log records major execution decisions and actions for transparency.
   - Updated `mission-control/data/tasks.json` approvals task to `review` with resubmission next action.
 - **Impact:** Both approvals now have decision-ready packets and are cleanly resubmittable.
 
+### Decision 006
+- **Context:** JB requested immediate activation of idle teammates and approval path for ARCH-1 (Spine).
+- **Decision:** Approve Spine as **conditional** (not unconditional) and activate GOV-1, REV-1, GTM-1, and CONTRA-1 with deterministic assignments.
+- **Reasoning:** Preserves governance while restoring execution velocity and reducing idle capacity.
+- **Action:**
+  - Set ARCH-1 status to `Working` with conditional-approval note.
+  - Added teammate tasks in `mission-control/data/tasks.json` for GOV-1/REV-1/GTM-1/CONTRA-1.
+  - Published `mission-control/docs/operations/SPINE_CONDITIONAL_APPROVAL_CHECKLIST.md`.
+- **Impact:** Team utilization improved immediately; Spine can proceed only if all approval conditions pass.
+
 ## Linked Artifacts
 - Sprint plan: `mission-control/docs/sprints/2026-02-17-3day-sprint.md`
 - GitHub issues:
