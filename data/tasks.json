@@ -97,5 +97,16 @@
     "blocker": "None",
     "nextAction": "Publish concise go/no-go memo tied to Spine conditions.",
     "updatedAt": "2026-02-20T07:06:00.000Z"
+  },
+  {
+    "id": "task-fin1-20260220-capital-experiment-launch",
+    "title": "Launch FIN-1 capital experiment with $3,100 allocation and weekly reporting cadence",
+    "tier": "Tier 2",
+    "status": "doing",
+    "owner": "FIN-1",
+    "deadline": "2026-02-20T12:00:00.000Z",
+    "blocker": "Pending JB confirmation that '+31 lines00' = $3,100 exact",
+    "nextAction": "Open both platforms, place tranche-1 orders to target weights, and log Week 0 baseline report.",
+    "updatedAt": "2026-02-20T07:15:00.000Z"
   }
 ]

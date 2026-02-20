@@ -56,6 +56,21 @@ This log records major execution decisions and actions for transparency.
   - Published `mission-control/docs/operations/SPINE_CONDITIONAL_APPROVAL_CHECKLIST.md`.
 - **Impact:** Team utilization improved immediately; Spine can proceed only if all approval conditions pass.
 
+### Decision 007
+- **Context:** JB activated a real capital experiment and requested a dedicated investor operational unit.
+- **Decision:** Create `FIN-1 · Investor` as a lightweight team unit with strict risk guardrails and deterministic operating artifacts.
+- **Reasoning:** Converts ad hoc investing into a process-driven experiment with downside controls and weekly accountability.
+- **Action:**
+  - Added FIN-1 to live team model (`src/lib/live.ts`).
+  - Added FIN-1 launch task in `mission-control/data/tasks.json`.
+  - Published finance operating artifacts under `mission-control/docs/operations/finance/`:
+    - `FIN-1_INITIAL_ALLOCATION_PLAN.md`
+    - `FIN-1_8_WEEK_OPERATING_STRATEGY.md`
+    - `FIN-1_RISK_MANAGEMENT_FRAMEWORK.md`
+    - `FIN-1_WEEKLY_REPORT_TEMPLATE.md`
+    - `FIN-1_REBALANCING_RULES.md`
+- **Impact:** FIN-1 is now operational with documented capital plan, risk controls, and execution cadence.
+
 ## Linked Artifacts
 - Sprint plan: `mission-control/docs/sprints/2026-02-17-3day-sprint.md`
 - GitHub issues:
