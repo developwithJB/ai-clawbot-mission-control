@@ -2,107 +2,101 @@
 
 **AI Team Headquarters ⚙️**
 
-Mission Control is the operating system for JB’s AI team.
-It is built to answer, at a glance:
-- Who is working right now
-- What is blocked
-- What needs approval
-- What ships next
-- What happened (audit trail)
+Mission Control is a team-first operating system for AI execution.
+It is designed to make work visible, govern risky actions, and keep decisions auditable.
 
 ---
 
-## Branding + Product Direction
+## Brand Direction
 
-This project now follows a **team-first, visual operations model** inspired by best-in-class Mission Control patterns:
-- dark command-center UI
+This repo follows a clean **Mission Control** visual language:
+- minimal, futuristic dark interface
 - persistent left sidebar navigation
-- tabbed workspace (not one giant homepage)
+- tabbed workspace (not a single giant dashboard)
 - office/team presence views
-- approvals + audit discipline
-
-Style is adapted to JB’s operating model and priorities (Tier 1 first).
+- high signal, low noise
 
 ---
 
-## Visuals
+## Visuals (Actual Current UI)
 
-### Current UI (Team-first + tabbed shell)
-![Current Mission Control UI](public/visuals/current-ui.png)
+### Tasks
+![Tasks UI](public/visuals/ui-tasks.png)
 
-### Office inspiration reference
-![Office reference](public/visuals/office-reference.png)
+### Office
+![Office UI](public/visuals/ui-office.png)
 
-### Team inspiration reference
-![Team reference](public/visuals/team-reference.png)
+### Team
+![Team UI](public/visuals/ui-team.png)
 
 ---
 
-## Tabbed Route Architecture (Current)
+## Tabbed Route Architecture
 
-Mission Control is now route-driven with a persistent sidebar shell.
+Mission Control is route-driven with a shared shell and sidebar.
 
 ### Core routes
-- `/tasks` — Task board, ownership, execution status
-- `/content` — Content pipeline lane (placeholder now)
-- `/approvals` — Approval inbox + decision control
-- `/calendar` — Scheduled automations + anomaly signals
-- `/memory` — Memory browser + searchable history
-- `/office` — Visual office with live employee states + task drill-down
-- `/team` — Team structure, role clarity, and responsibilities
+- `/tasks` — task board, ownership, status, blockers
+- `/content` — content pipeline lane
+- `/approvals` — approval inbox + decision controls
+- `/calendar` — automations + reliability/anomaly view
+- `/memory` — searchable memory/doc history
+- `/office` — live office scene + task/events/approvals drill-down
+- `/team` — team structure and responsibilities
 
 ### Entry route
 - `/` redirects to `/tasks`
 
 ---
 
-## Current Capabilities by Surface
+## Tier Guardrail Model (Generic)
 
-## 1) Tasks
-- Owner-based execution tracking (`JB` / `Operator` / units)
-- Tier + status + blocker + next-action + deadline
-- API-backed updates:
-  - `POST /api/tasks`
-  - `PATCH /api/tasks/:id`
+Use this 3-tier guardrail in any deployment:
 
-## 2) Approvals
-- Centralized approval inbox
-- Version-safe approval decisions
-- Governance-first controls for sensitive actions
+### Tier 1 — Reliability & Safety
+- Keep system stable
+- Prevent risky actions
+- Maintain auditability and approval controls
 
-## 3) Calendar
-- Cron visibility and next-run tracking
-- Reliability anomaly chips:
-  - consecutive failures
-  - stale last run
-  - imminent next run
+### Tier 2 — Core Execution
+- Ship the highest-leverage product work
+- Reduce blockers
+- Drive measurable weekly outcomes
 
-## 4) Memory
-- Unified memory screen for `MEMORY.md` + `memory/*.md`
-- Search-driven recall in UI
+### Tier 3 — Optimization & Growth
+- Experiments, distribution, and incremental improvements
+- Only after Tier 1/2 health is acceptable
 
-## 5) Office (v2)
-- Visual employee/unit board
-- Live state animations (working/idle/attention)
-- Click employee → open current task stack drawer
-
-## 6) Team
-- Role map + objective + tier alignment
-- Next-owner handoff visibility
-
-## 7) Global Search + Ops Views
-- Search across tasks/events/approvals/repos/telegram ops
-- Event timeline + activity feed + pulse metrics
+**Decision rule:** if a task conflicts with Tier 1 reliability/safety, it does not ship.
 
 ---
 
-## Data + Persistence
+## Current Capabilities
 
-- SQL backbone (local-first, Postgres-upgradeable)
-  - `db/schema.sql`
-  - `db/mission-control.sqlite`
-- Services under `src/lib/services/*`
-- Legacy JSON retained only for seed/backup compatibility
+### Tasks
+- owner-based tracking
+- tier/status/deadline/blocker/next-action fields
+- API-backed updates (`POST /api/tasks`, `PATCH /api/tasks/:id`)
+
+### Approvals
+- centralized governance queue
+- explicit approve/reject flow
+- version-safe updates
+
+### Calendar
+- cron visibility
+- anomaly indicators (failures/stale/imminent)
+
+### Memory
+- memory docs browser + search
+
+### Office
+- live unit presence with status-driven animations
+- click unit to open task/events/approvals context panel
+
+### Team
+- role and responsibility map
+- handoff visibility
 
 ---
 
@@ -129,10 +123,7 @@ Approval required before:
 - Outbound messages
 - Purchases
 
-Priority ladder:
-1. Haushavn MVP (Tier 1)
-2. AGB revenue system (Tier 2)
-3. Dashboard + book growth (Tier 3)
+Hard risk constraints are documented per operational unit/runbook.
 
 ---
 
@@ -143,21 +134,17 @@ npm install
 npm run dev
 ```
 
-Open:
-
-```text
-http://localhost:3000
-```
+Open `http://localhost:3000`
 
 ---
 
-## Project Structure (Current)
+## Project Structure
 
 ```text
 src/
   app/
-    layout.tsx                 # shared shell + sidebar nav
-    page.tsx                   # redirects to /tasks
+    layout.tsx
+    page.tsx
     tasks/page.tsx
     content/page.tsx
     approvals/page.tsx
@@ -166,15 +153,6 @@ src/
     office/page.tsx
     team/page.tsx
     api/
-      approvals/[id]/route.ts
-      approvals/route.ts
-      cron/jobs/route.ts
-      events/route.ts
-      memory/route.ts
-      tasks/route.ts
-      tasks/[id]/route.ts
-      telegram/feed/route.ts
-      telegram/notify/route.ts
   components/hq/
     SidebarNav.tsx
     OfficeScene.tsx
@@ -197,11 +175,4 @@ public/
   visuals/
 ```
 
----
-
-## Ownership
-
-- **Principal:** Justin “JB” Bergeron
-- **Lead Operator:** Embedded Strategic AI & Execution Engine (⚙️)
-
-Mission Control is a living system. Weekly iteration is expected.
+Mission Control is a living system. Iterate weekly and keep docs in lockstep with shipped UX.
