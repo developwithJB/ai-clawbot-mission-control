@@ -1,8 +1,57 @@
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
-import { DatabaseSync } from "node:sqlite";
+
+type RunResult = {
+  changes: number;
+  lastInsertRowid?: number | bigint;
+};
+
+type Statement = {
+  run: (...params: unknown[]) => RunResult;
+  get: <T = unknown>(...params: unknown[]) => T | undefined;
+  all: <T = unknown>(...params: unknown[]) => T[];
+};
+
+type DatabaseSync = {
+  prepare: (sql: string) => Statement;
+  exec: (sql: string) => void;
+};
+
+type DatabaseSyncConstructor = new (path: string) => DatabaseSync;
+
+const require = createRequire(import.meta.url);
 
 let dbInstance: DatabaseSync | null = null;
+
+function getDatabaseSyncConstructor(): DatabaseSyncConstructor {
+  try {
+    const sqliteModule = require("node:sqlite") as { DatabaseSync?: DatabaseSyncConstructor };
+    if (sqliteModule.DatabaseSync) {
+      return sqliteModule.DatabaseSync;
+    }
+  } catch {
+    // Ignore and try better-sqlite3 fallback.
+  }
+
+  try {
+    const betterSqlite3Module = require("better-sqlite3") as
+      | DatabaseSyncConstructor
+      | { default?: DatabaseSyncConstructor };
+    const constructor =
+      typeof betterSqlite3Module === "function" ? betterSqlite3Module : betterSqlite3Module.default;
+    if (constructor) {
+      return constructor;
+    }
+  } catch {
+    // Fall through to throw a friendlier error.
+  }
+
+  throw new Error(
+    `No compatible SQLite driver is available in this Node.js runtime (${process.version}). ` +
+      "Enable node:sqlite or install better-sqlite3.",
+  );
+}
 
 function migrateEventsTable(db: DatabaseSync) {
   const row = db
@@ -10,12 +59,7 @@ function migrateEventsTable(db: DatabaseSync) {
     .get() as { sql?: string } | undefined;
 
   const createSql = row?.sql ?? "";
-  if (
-    createSql.includes("approval_decided") &&
-    createSql.includes("web_search") &&
-    createSql.includes("request_id") &&
-    createSql.includes("trace_id")
-  ) {
+  if (createSql.includes("approval_decided") && createSql.includes("request_id") && createSql.includes("trace_id")) {
     return;
   }
 
@@ -26,7 +70,7 @@ function migrateEventsTable(db: DatabaseSync) {
         id TEXT PRIMARY KEY,
         agent TEXT NOT NULL,
         pipeline TEXT NOT NULL CHECK (pipeline IN ('A', 'B', 'C', 'D')),
-        type TEXT NOT NULL CHECK (type IN ('decision', 'delivery', 'integration', 'approval', 'approval_decided', 'web_search')),
+        type TEXT NOT NULL CHECK (type IN ('decision', 'delivery', 'integration', 'approval', 'approval_decided')),
         summary TEXT NOT NULL,
         timestamp TEXT NOT NULL,
         approval_id TEXT,
@@ -58,7 +102,8 @@ function initDb(): DatabaseSync {
   const schemaPath = path.join(dbDir, "schema.sql");
 
   mkdirSync(dbDir, { recursive: true });
-  const db = new DatabaseSync(dbPath);
+  const DatabaseSyncImpl = getDatabaseSyncConstructor();
+  const db = new DatabaseSyncImpl(dbPath);
 
   db.exec("PRAGMA journal_mode = WAL;");
   db.exec("PRAGMA foreign_keys = ON;");

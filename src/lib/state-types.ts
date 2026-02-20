@@ -4,6 +4,6 @@ export type TaskStatus = "inbox" | "planned" | "doing" | "blocked" | "review" | 
 
 export type ApprovalStatus = "pending" | "approved" | "rejected";
 
-export type EventType = "decision" | "delivery" | "integration" | "approval" | "approval_decided" | "web_search";
+export type EventType = "decision" | "delivery" | "integration" | "approval" | "approval_decided";
 
 export type Pipeline = "A" | "B" | "C" | "D";

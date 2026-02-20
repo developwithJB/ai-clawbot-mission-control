@@ -1,177 +1,119 @@
-# JB’s Personal AI Team Mission Control ⚙️
+# Mission Control
 
-Welcome to the operating system behind JB’s AI team.
+**AI Team Headquarters ⚙️**
 
-This repo is a practical example of how to run a **multi-agent personal mission control** with:
-- clear priorities,
-- explicit governance,
-- fast execution loops,
-- human decision checkpoints,
-- and a dashboard that stays useful on busy days.
-
-If you’re building your own AI command center, you can either:
-1. **Clone and run this directly**, or
-2. **Borrow patterns** (unit governance, ask inbox, approval gates, audit trails, Telegram outbox).
+Mission Control is a team-first operating system for AI execution.
+It is designed to make work visible, govern risky actions, and keep decisions auditable.
 
 ---
 
-## Why this exists
+## Brand Direction
 
-Most AI stacks fail because they optimize for output, not control.
-
-Mission Control is designed to answer, at a glance:
-- What matters right now?
-- What does JB need to decide?
-- What was completed?
-- What’s next?
-- Are we drifting from Tier 1?
+This repo follows a clean **Mission Control** visual language:
+- minimal, futuristic dark interface
+- persistent left sidebar navigation
+- tabbed workspace (not a single giant dashboard)
+- office/team presence views
+- high signal, low noise
 
 ---
 
-## The Team (Units, Codenames, Roles)
+## Visuals (Actual Current UI)
 
-These are the active units in the system:
+### Tasks
+![Tasks UI](public/visuals/ui-tasks.png)
 
-- **PROD-1 · Compass 🧭**
-  - Product strategy and priority defense
-  - Protects Tier 1 focus
+### Office
+![Office UI](public/visuals/ui-office.png)
 
-- **OPS-1 · Flow 🌊**
-  - Sprint sequencing and orchestration
-  - Enforces execution order
-
-- **ARCH-1 · Spine 🧬**
-  - Architecture authority
-  - Guards schema boundaries, service boundaries, long-term integrity
-
-- **ENG-1 · Builder 🔨**
-  - Delivery and stability
-  - Builds, fixes, refactors, ships safely
-
-- **GOV-1 · Gatekeeper 🛡**
-  - Governance and risk enforcement
-  - Blocks unsafe actions and enforces approvals
-
-- **REV-1 · Monetizer 💰**
-  - Revenue strategy and monetization alignment
-
-- **GTM-1 · Amplifier 📣**
-  - Marketing and growth distribution
-
-- **CONTRA-1 · Wrench 🧨**
-  - Contrarian stress-test unit
-  - Prevents groupthink and Tier drift before work enters sprint
+### Team
+![Team UI](public/visuals/ui-team.png)
 
 ---
 
-## Core principles
+## Tabbed Route Architecture
 
-1. **Tier 1 first**
-   - Tier 3 work is blocked if Tier 1 backlog exists.
+Mission Control is route-driven with a shared shell and sidebar.
 
-2. **Ask-first landing page**
-   - Dashboard defaults to what JB must decide now.
+### Core routes
+- `/tasks` - task board, ownership, status, blockers
+- `/content` - content pipeline lane
+- `/approvals` - approval inbox + decision controls
+- `/calendar` - automations + reliability/anomaly view
+- `/memory` - searchable memory/doc history
+- `/office` - live office scene + task/events/approvals drill-down
+- `/team` - team structure and responsibilities
 
-3. **No silent risk**
-   - Sensitive actions require explicit approval.
-
-4. **Append-only governance trail**
-   - Decision events are logged and queryable.
-
-5. **Telegram as output bus**
-   - Notifications are delivered from an outbox queue (no dropped sends on transient failure).
-
----
-
-## What’s in the UI
-
-### Landing (Overview)
-Built for a 15-second scan:
-- active Tier 1 posture
-- approvals pending
-- Wrench objections
-- JB ask inbox (with action buttons)
-- done recently / next up
-- unit board + Telegram preview
-
-### Tabs
-- **Decisions**: approvals + event timeline
-- **Execution**: task orchestration + pulse + readiness
-- **Governance**: unit rules + guardrails + permissions
-- **Intel**: GitHub signal + dependency map
+### Entry route
+- `/` redirects to `/tasks`
 
 ---
 
-## Architecture snapshot
+## Tier Guardrail Model (Generic)
 
-- Next.js dashboard + API routes
-- Durable SQL backbone (SQLite local-first, Postgres-upgradeable)
-- Service-layer persistence (thin route handlers)
-- Optimistic concurrency on approvals (`version` + `409` conflicts)
-- Approval race harness for conflict/recovery testing
+Use this 3-tier guardrail in any deployment:
 
----
+### Tier 1 - Reliability & Safety
+- Keep system stable
+- Prevent risky actions
+- Maintain auditability and approval controls
 
-## API highlights
+### Tier 2 - Core Execution
+- Ship the highest-leverage product work
+- Reduce blockers
+- Drive measurable weekly outcomes
 
-- `GET /api/events`
-- `GET /api/approvals`
-- `GET /api/approvals/:id`
-- `PATCH /api/approvals/:id`
-- `POST /api/asks/resolve`
-- `POST /api/policy/check` (now auto-triggers CONTRA-1 on risky strategic decisions)
-- `POST /api/telegram/notify`
-- `GET /api/telegram/feed`
-- `POST /api/web-search` (logs each search event with provider/query/timestamp)
+### Tier 3 - Optimization & Growth
+- Experiments, distribution, and incremental improvements
+- Only after Tier 1/2 health is acceptable
 
-Telegram notify supports:
-- raw payloads, and
-- typed templates (`approval_requested`, `approval_decided`, `daily_pulse`, `wrench_alert`)
+**Decision rule:** if a task conflicts with Tier 1 reliability/safety, it does not ship.
 
 ---
 
-## Local development
+## Current Capabilities
 
-```bash
-npm install
-npm run dev
-```
+### Tasks
+- owner-based tracking
+- tier/status/deadline/blocker/next-action fields
+- API-backed updates (`POST /api/tasks`, `PATCH /api/tasks/:id`)
 
-Open:
+### Approvals
+- centralized governance queue
+- explicit approve/reject flow
+- version-safe updates
 
-```text
-http://localhost:3000
-```
+### Calendar
+- cron visibility
+- anomaly indicators (failures/stale/imminent)
 
----
+### Memory
+- memory docs browser + search
 
-## Educational paths (if you’re exploring ideas)
+### Office
+- live unit presence with status-driven animations
+- click unit to open task/events/approvals context panel
 
-If you’re just learning, start here:
-1. `src/lib/unit-governance.ts` → how roles/checks are encoded
-2. `src/lib/services/approvalService.ts` → concurrency-safe approvals + audit events
-3. `src/lib/services/telegramService.ts` → outbox + delivery eventing
-4. `src/app/page.tsx` → ask-first dashboard composition
-5. `scripts/approval-race-harness.mjs` → conflict simulation end-to-end
+### Team
+- role and responsibility map
+- handoff visibility
 
 ---
 
 ## Free Hosted TV Mode (Sprint 1)
 
 Zero-cost hosted dashboard with local secure execution:
-
-- No paid services required
-- No inbound Mac ports (outbound GitHub push/poll only)
+- no paid services required
+- no inbound Mac ports (outbound GitHub push/poll only)
+- hosted surface is read-only
 
 ### Environment
-
 Create env from `.env.example`:
 - `SAFE_MODE=true`
 - `SNAPSHOT_REPO`, `SNAPSHOT_BRANCH`, `SNAPSHOT_PAT`
 - `APPROVAL_REPO`, `APPROVAL_ACTORS`
 
-### Snapshot publish (5 minutes)
-
+### Snapshot publish (every 5 minutes)
 ```bash
 bash scripts/publish_snapshot.sh
 ```
@@ -184,16 +126,13 @@ Pipeline:
 5. On failure sends macOS notification (`osascript`)
 
 ### launchd examples
-
 - `docs/operations/launchd/com.missioncontrol.snapshot-publish.plist` (every 5 min)
 - `docs/operations/launchd/com.missioncontrol.approvals-poll.plist` (every 60s)
 
 ### GitHub Pages
-
 Serve `dashboard/` with GitHub Pages for read-only hosted TV.
 
 ### Mobile approvals via GitHub Issues
-
 ```bash
 node --experimental-strip-types scripts/poll_approvals.ts
 ```
@@ -204,18 +143,90 @@ node --experimental-strip-types scripts/poll_approvals.ts
 - Decision must be exact one-line `approve` or `reject` (case-insensitive)
 - On decision: closes issue, writes local DB event, logs local unblock record
 
-## Docs
+---
 
-- `docs/operations/MISSION_CONTROL_UNIT_SYSTEM_v1.md`
-- `docs/audit/UNIT_GAP_AUDIT_2026-02-18.md`
-- `docs/operations/WORKING_AGREEMENT_v1.md`
-- `docs/operations/operator-runbook.md`
+## API Routes (Active)
+
+- `GET /api/events`
+- `GET /api/approvals`
+- `GET /api/approvals/:id`
+- `PATCH /api/approvals/:id`
+- `GET /api/tasks`
+- `POST /api/tasks`
+- `PATCH /api/tasks/:id`
+- `GET /api/cron/jobs`
+- `GET /api/memory`
+- `POST /api/telegram/notify`
+- `GET /api/telegram/feed`
 
 ---
 
-## Ownership
+## Operating Guardrails
 
-- **Principal:** Justin “JB” Bergeron
-- **System:** Personal AI Team Mission Control
+Approval required before:
+- Deployments
+- Outbound messages
+- Purchases
 
-This is a living execution system. Clone it, remix it, improve it, and build your own version of disciplined AI operations.
+Hard risk constraints are documented per operational unit/runbook.
+
+---
+
+## Local Development
+
+```bash
+npm install
+npm run dev
+```
+
+Open `http://localhost:3000`
+
+---
+
+## Project Structure
+
+```text
+src/
+  app/
+    layout.tsx
+    page.tsx
+    tasks/page.tsx
+    content/page.tsx
+    approvals/page.tsx
+    calendar/page.tsx
+    memory/page.tsx
+    office/page.tsx
+    team/page.tsx
+    api/
+  components/hq/
+    SidebarNav.tsx
+    OfficeScene.tsx
+    TaskOrchestratorCard.tsx
+    MissionCalendar.tsx
+    MemoryScreen.tsx
+    ApprovalInbox.tsx
+    TeamStructureScreen.tsx
+  lib/
+    live.ts
+    tasks.ts
+    memory.ts
+    services/
+
+scripts/
+  generate_snapshot.ts
+  publish_snapshot.sh
+  poll_approvals.ts
+
+dashboard/
+  index.html
+  snapshot.json
+
+docs/
+  operations/
+  audit/
+
+public/
+  visuals/
+```
+
+Mission Control is a living system. Iterate weekly and keep docs in lockstep with shipped UX.

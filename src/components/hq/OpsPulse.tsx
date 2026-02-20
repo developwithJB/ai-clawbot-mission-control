@@ -1,4 +1,4 @@
-type EventItem = { type: "decision" | "delivery" | "integration" | "approval" | "approval_decided" | "web_search" };
+type EventItem = { type: "decision" | "delivery" | "integration" | "approval" | "approval_decided" };
 type ApprovalItem = { status: "pending" | "approved" | "rejected" };
 
 export function OpsPulse({ events, approvals }: { events: EventItem[]; approvals: ApprovalItem[] }) {

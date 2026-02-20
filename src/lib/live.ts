@@ -12,7 +12,7 @@ type EventItem = {
   id: string;
   agent: string;
   pipeline: "A" | "B" | "C" | "D";
-  type: "decision" | "delivery" | "integration" | "approval" | "approval_decided" | "web_search";
+  type: "decision" | "delivery" | "integration" | "approval" | "approval_decided";
   summary: string;
   timestamp: string;
   approvalId?: string | null;
@@ -28,9 +28,6 @@ const execFileAsync = promisify(execFile);
 
 type GitHubItem = { number: number; title: string; url: string; labels?: { name: string }[] };
 
-type AskImpact = "Revenue" | "Stability" | "Growth" | "Governance";
-type AskType = "approval" | "blocker" | "wrench";
-
 export type LiveOpsSnapshot = {
   github: {
     openIssues: GitHubItem[];
@@ -42,7 +39,7 @@ export type LiveOpsSnapshot = {
   shippedToday: { who: string; summary: string; when: string }[];
   top3: { title: string; tier: "Tier 1" | "Tier 2" | "Tier 3"; why: string }[];
   events: EventItem[];
-  rankedTasks: { id: string; title: string; tier: "Tier 1" | "Tier 2" | "Tier 3"; status: "inbox" | "planned" | "doing" | "blocked" | "review" | "done"; owner: string; createdAt?: string; updatedAt?: string }[];
+  rankedTasks: { id: string; title: string; tier: "Tier 1" | "Tier 2" | "Tier 3"; status: "inbox" | "planned" | "doing" | "blocked" | "review" | "done"; owner: string }[];
   prReadiness: { number: number; title: string; url: string; risk: "Low" | "Medium" | "High"; reason: string }[];
   repoGraph: {
     repositories: {
@@ -74,26 +71,6 @@ export type LiveOpsSnapshot = {
     wrenchChips: { reason: string; lane: string }[];
     telegramFeed: { id: string; type: string; status: "queued" | "sent" | "failed"; message: string; createdAt: string }[];
   };
-  asks: {
-    cap: number;
-    total: number;
-    overflow: number;
-    items: {
-      id: string;
-      type: AskType;
-      title: string;
-      detail: string;
-      impact: AskImpact;
-      requiredBy: string;
-      approvalId?: string;
-      blockerTaskId?: string;
-      objection?: string;
-    }[];
-  };
-  sla: {
-    approvals: { oldestHours: number; status: "ok" | "warn" | "breach" };
-    blockers: { oldestHours: number; status: "ok" | "warn" | "breach" };
-  };
 };
 
 async function ghJson<T>(args: string[]): Promise<{ data: T | null; error?: string }> {
@@ -103,18 +80,6 @@ async function ghJson<T>(args: string[]): Promise<{ data: T | null; error?: stri
   } catch (error) {
     return { data: null, error: error instanceof Error ? error.message : "Unknown GitHub error" };
   }
-}
-
-function hoursSince(iso?: string): number {
-  if (!iso) return 0;
-  const ms = Date.now() - new Date(iso).getTime();
-  return Math.max(0, Math.floor(ms / (1000 * 60 * 60)));
-}
-
-function toSlaStatus(hours: number, warnAt: number, breachAt: number): "ok" | "warn" | "breach" {
-  if (hours >= breachAt) return "breach";
-  if (hours >= warnAt) return "warn";
-  return "ok";
 }
 
 export async function getLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
@@ -160,54 +125,6 @@ export async function getLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
     createdAt: n.createdAt,
   }));
 
-  const pendingApprovals = approvals.filter((a) => a.status === "pending");
-  const oldestApprovalHours = pendingApprovals.length
-    ? Math.max(...pendingApprovals.map((a) => hoursSince(a.createdAt)))
-    : 0;
-
-  const blockedTasks = rankedTasks.filter((t) => t.status === "blocked");
-  const oldestBlockerHours = blockedTasks.length
-    ? Math.max(...blockedTasks.map((t) => hoursSince(t.updatedAt ?? t.createdAt)))
-    : 0;
-
-  const rawAsks: LiveOpsSnapshot["asks"]["items"] = [
-    ...pendingApprovals.map((a) => ({
-      id: `ask-approval-${a.id}`,
-      type: "approval" as const,
-      title: `Decision needed: ${a.item}`,
-      detail: `${a.reason} · risk ${a.level}`,
-      impact: "Governance" as const,
-      requiredBy: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
-      approvalId: a.id,
-    })),
-    ...blockedTasks.map((t) => ({
-      id: `ask-blocker-${t.id}`,
-      type: "blocker" as const,
-      title: `Unblock: ${t.title}`,
-      detail: `Owner: ${t.owner} · ${t.tier}`,
-      impact: "Stability" as const,
-      requiredBy: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
-      blockerTaskId: t.id,
-    })),
-    ...wrenchChips.map((w, idx) => ({
-      id: `ask-wrench-${idx}`,
-      type: "wrench" as const,
-      title: "Wrench objection requires answer",
-      detail: w.reason,
-      impact: "Governance" as const,
-      requiredBy: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
-      objection: w.reason,
-    })),
-  ];
-
-  const askCap = 3;
-  const asks = {
-    cap: askCap,
-    total: rawAsks.length,
-    overflow: Math.max(0, rawAsks.length - askCap),
-    items: rawAsks.slice(0, askCap),
-  };
-
   const githubError = issueRes.error ?? prRes.error;
   const prReadiness = scorePrReadiness(prRes.data ?? []);
 
@@ -233,20 +150,16 @@ export async function getLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
       units: [
         { code: "PROD-1", codename: "Compass", icon: "🧭", status: "Working", objective: "Protect Tier 1 roadmap integrity", tier: 1, lastUpdate: new Date().toISOString(), nextOwner: "OPS-1" },
         { code: "OPS-1", codename: "Flow", icon: "🌊", status: "Working", objective: "Sequence sprint against Tier ladder", tier: 1, lastUpdate: new Date().toISOString(), nextOwner: "ARCH-1" },
-        { code: "ARCH-1", codename: "Spine", icon: "🧬", status: "Waiting approval", objective: "Validate service boundaries", tier: 1, lastUpdate: new Date().toISOString(), nextOwner: "ENG-1" },
+        { code: "ARCH-1", codename: "Spine", icon: "🧬", status: "Working", objective: "Validate service boundaries (approved with conditions)", tier: 1, lastUpdate: new Date().toISOString(), nextOwner: "ENG-1" },
         { code: "ENG-1", codename: "Builder", icon: "🔨", status: "Working", objective: "Ship stable increments", tier: 1, lastUpdate: new Date().toISOString(), nextOwner: "GOV-1" },
         { code: "GOV-1", codename: "Gatekeeper", icon: "🛡", status: "Idle", objective: "Enforce sensitive action approvals", tier: 1, lastUpdate: new Date().toISOString(), nextOwner: "JB" },
-        { code: "REV-1", codename: "Monetizer", icon: "💰", status: "Idle", objective: "Model monetization on shipped value", tier: 2, lastUpdate: new Date().toISOString(), nextOwner: "GTM-1" },
+        { code: "REV-1", codename: "Monetizer", icon: "💰", status: "Idle", objective: "Model monetization on shipped value", tier: 2, lastUpdate: new Date().toISOString(), nextOwner: "FIN-1" },
+        { code: "FIN-1", codename: "Investor", icon: "📈", status: "Working", objective: "Run disciplined $3,100 capital experiment (Coinbase + Robinhood)", tier: 2, lastUpdate: new Date().toISOString(), nextOwner: "REV-1" },
         { code: "GTM-1", codename: "Amplifier", icon: "📣", status: "Idle", objective: "Distribute validated outcomes", tier: 2, lastUpdate: new Date().toISOString(), nextOwner: "REV-1" },
         { code: "CONTRA-1", codename: "Wrench", icon: "🧨", status: wrenchChips.length ? "Working" : "Idle", objective: "Stress-test plan quality and tier proof", tier: 1, lastUpdate: new Date().toISOString(), nextOwner: wrenchChips.length ? "PROD-1" : "OPS-1" },
       ],
       wrenchChips,
       telegramFeed,
-    },
-    asks,
-    sla: {
-      approvals: { oldestHours: oldestApprovalHours, status: toSlaStatus(oldestApprovalHours, 8, 24) },
-      blockers: { oldestHours: oldestBlockerHours, status: toSlaStatus(oldestBlockerHours, 6, 18) },
     },
   };
 }
