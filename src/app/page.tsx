@@ -15,18 +15,12 @@ import { UnitBoard } from "@/components/hq/UnitBoard";
 import { MissionCalendar } from "@/components/hq/MissionCalendar";
 import { GlobalSearch } from "@/components/hq/GlobalSearch";
 import { MemoryScreen } from "@/components/hq/MemoryScreen";
-import { TeamStructureScreen } from "@/components/hq/TeamStructureScreen";
+// TeamStructureScreen removed from main page to reduce duplicated status surfaces.
 import { getLiveOpsSnapshot } from "@/lib/live";
 import { readTasks } from "@/lib/tasks";
 import { listMemoryDocs } from "@/lib/memory";
 
-type Agent = {
-  name: string;
-  role: string;
-  status: "Idle" | "Working" | "Needs Review";
-  focus: string;
-  risk: "Low" | "Medium" | "High";
-};
+// Agent card typing removed; team presence is sourced from live.unitBoard units.
 
 type Pipeline = {
   id: "A" | "D" | "B" | "C";
@@ -37,50 +31,7 @@ type Pipeline = {
   steps: string[];
 };
 
-const agents: Agent[] = [
-  {
-    name: "Operator",
-    role: "Lead Operator / Orchestration",
-    status: "Working",
-    focus: "Routing execution across pipelines A → D → B → C",
-    risk: "Low",
-  },
-  {
-    name: "Bug Engineer",
-    role: "Issue triage, patch plans, fix workflows",
-    status: "Working",
-    focus: "Pipeline A live: issue intake + execution board",
-    risk: "Medium",
-  },
-  {
-    name: "Revenue Officer",
-    role: "Revenue experiments + funnel progression",
-    status: "Idle",
-    focus: "Queued after Operator Sprint Planner",
-    risk: "Low",
-  },
-  {
-    name: "Marketing Operator",
-    role: "Content + channel distribution engine",
-    status: "Idle",
-    focus: "Queued after Revenue pipeline",
-    risk: "Low",
-  },
-  {
-    name: "Discovery Analyst",
-    role: "CTO intel + strategic discovery",
-    status: "Working",
-    focus: "Support bug triage and sprint prioritization",
-    risk: "Low",
-  },
-  {
-    name: "QA & Security Sentinel",
-    role: "Quality gates + security guardrails",
-    status: "Needs Review",
-    focus: "Approval matrix + safety checks for active workflows",
-    risk: "Medium",
-  },
-];
+// Legacy static agent list removed; live units now come from live.unitBoard.
 
 const pipelines: Pipeline[] = [
   {
@@ -196,11 +147,7 @@ const rolePermissions = [
   { name: "Marketing Operator", deploy: "denied", message: "approval", purchase: "approval", repoWrite: "denied" },
 ] as const;
 
-function badgeClass(status: Agent["status"]) {
-  if (status === "Working") return "border-emerald-500/30 bg-emerald-500/15 text-emerald-300";
-  if (status === "Needs Review") return "border-amber-500/30 bg-amber-500/15 text-amber-300";
-  return "border-zinc-500/30 bg-zinc-500/15 text-zinc-300";
-}
+// badgeClass removed with legacy Agent Live View.
 
 function pipelineClass(status: Pipeline["status"]) {
   if (status === "Active") return "border-emerald-500/30 bg-emerald-500/10";
@@ -313,15 +260,8 @@ export default async function Home() {
             </article>
 
             <article className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">Team Activity Snapshot</p>
-              <ul className="mt-3 space-y-2 text-sm text-zinc-300">
-                {live.unitBoard.units.slice(0, 5).map((unit) => (
-                  <li key={unit.code} className="flex items-center justify-between gap-2">
-                    <span>{unit.icon} {unit.codename}</span>
-                    <span className="text-xs text-zinc-400">{unit.status}</span>
-                  </li>
-                ))}
-              </ul>
+              <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">Execution Signal</p>
+              <p className="mt-3 text-sm text-zinc-300">Team status is now centralized in the Employee Status Board above for cleaner focus.</p>
             </article>
           </div>
         </section>
@@ -346,12 +286,12 @@ export default async function Home() {
 
         <MemoryScreen initialDocs={initialMemoryDocs} />
 
-        <TeamStructureScreen units={live.unitBoard.units} />
+        {/* TeamStructureScreen removed to avoid duplicate status surfaces */}
 
         <section className="grid gap-4 md:grid-cols-4">
           <Stat label="Execution Mode" value="Active Workflows" />
           <Stat label="Team Working" value={`${live.unitBoard.units.filter((u) => u.status === "Working").length} active`} />
-          <Stat label="Awaiting Input" value={`${live.unitBoard.units.filter((u) => u.status === "Needs JB" || u.status === "Waiting approval").length} units`} />
+          <Stat label="Awaiting Input" value={`${live.unitBoard.units.filter((u) => u.status === "Needs JB" || u.status === "Waiting approval" || u.status === "Blocked").length} units`} />
           <Stat label="Risk Posture" value="Guarded" />
         </section>
 
@@ -389,24 +329,7 @@ export default async function Home() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
-          <h2 className="text-lg font-semibold">Agent Live View</h2>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            {agents.map((agent) => (
-              <article key={agent.name} className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="font-semibold">{agent.name}</h3>
-                    <p className="text-sm text-zinc-400">{agent.role}</p>
-                  </div>
-                  <span className={`rounded-full border px-2 py-1 text-xs ${badgeClass(agent.status)}`}>{agent.status}</span>
-                </div>
-                <p className="mt-3 text-sm text-zinc-300">{agent.focus}</p>
-                <p className="mt-2 text-xs text-zinc-400">Risk: {agent.risk}</p>
-              </article>
-            ))}
-          </div>
-        </section>
+        {/* Legacy Agent Live View removed to reduce duplicated status surfaces. */}
 
         <RepoDependencyBoard
           repositories={live.repoGraph.repositories}
