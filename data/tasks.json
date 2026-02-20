@@ -25,12 +25,12 @@
     "id": "task-gov1-20260219-approvals",
     "title": "Clear high-priority approvals queue (appr-001/appr-002) with decision-ready context",
     "tier": "Tier 1",
-    "status": "doing",
+    "status": "review",
     "owner": "GOV-1",
     "deadline": "2026-02-19T15:00:00.000Z",
-    "blocker": "Pending JB decision",
-    "nextAction": "Prepare one-line approve/reject recommendation per item",
-    "updatedAt": "2026-02-19T14:18:00.000Z"
+    "blocker": "Awaiting JB approve/reject decisions on resubmission packets",
+    "nextAction": "Submit appr-001 and appr-002 using completed packets in docs/operations/approval-packets/",
+    "updatedAt": "2026-02-19T15:48:00.000Z"
   },
   {
     "id": "task-ops1-20260219-calendar-hardening",

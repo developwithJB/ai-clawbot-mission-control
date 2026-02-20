@@ -187,7 +187,7 @@ const weeklyWinCriteria = [
   "Book sales or speaking/workshop bookings",
   "Faith impact: helped grow someone's relationship with Jesus",
 ];
-const pipelineOrder = ["A · Bug Engineer", "D · Sprint Planner", "B · Revenue", "C · Marketing"];
+// Legacy pipeline ordering removed from primary UI in favor of team status visibility.
 
 const rolePermissions = [
   { name: "Operator", deploy: "approval", message: "approval", purchase: "approval", repoWrite: "allowed" },
@@ -238,13 +238,47 @@ export default async function Home() {
           <p className="text-sm uppercase tracking-[0.2em] text-zinc-400">Mission Control</p>
           <h1 className="mt-2 text-3xl font-semibold md:text-4xl">AI Team Headquarters ⚙️</h1>
           <p className="mt-3 max-w-4xl text-zinc-300">
-            Active execution mode enabled. Pipeline order confirmed: <strong>A → D → B → C</strong>.
+            Active execution mode enabled. Team-first view is now live with real-time employee status.
           </p>
           <div className="mt-2 flex items-center justify-between gap-3">
             <p className="text-xs text-zinc-500">Live snapshot refreshed: {lastUpdated} (America/Chicago)</p>
             <LiveOpsControls />
           </div>
         </header>
+
+        <section className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold">Employee Status Board</h2>
+            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300">
+              Live Team Presence
+            </span>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+            {live.unitBoard.units.map((unit) => (
+              <article key={unit.code} className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-semibold text-zinc-100">{unit.icon} {unit.codename}</p>
+                  <span
+                    className={`rounded-full border px-2 py-1 text-xs ${
+                      unit.status === "Working"
+                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                        : unit.status === "Blocked" || unit.status === "Needs JB"
+                          ? "border-rose-500/30 bg-rose-500/10 text-rose-300"
+                          : unit.status === "Waiting approval"
+                            ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
+                            : "border-zinc-500/30 bg-zinc-500/10 text-zinc-300"
+                    }`}
+                  >
+                    {unit.status}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs text-zinc-400">{unit.code} · Tier {unit.tier}</p>
+                <p className="mt-2 text-sm text-zinc-300">{unit.objective}</p>
+                <p className="mt-2 text-xs text-zinc-500">Next: {unit.nextOwner}</p>
+              </article>
+            ))}
+          </div>
+        </section>
 
         <section className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
           <div className="flex items-center justify-between gap-3">
@@ -279,17 +313,15 @@ export default async function Home() {
             </article>
 
             <article className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">Pipeline Order</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {pipelineOrder.map((pipeline) => (
-                  <span
-                    key={pipeline}
-                    className="rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs text-sky-300"
-                  >
-                    {pipeline}
-                  </span>
+              <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">Team Activity Snapshot</p>
+              <ul className="mt-3 space-y-2 text-sm text-zinc-300">
+                {live.unitBoard.units.slice(0, 5).map((unit) => (
+                  <li key={unit.code} className="flex items-center justify-between gap-2">
+                    <span>{unit.icon} {unit.codename}</span>
+                    <span className="text-xs text-zinc-400">{unit.status}</span>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </article>
           </div>
         </section>
@@ -318,8 +350,8 @@ export default async function Home() {
 
         <section className="grid gap-4 md:grid-cols-4">
           <Stat label="Execution Mode" value="Active Workflows" />
-          <Stat label="Current Pipeline" value="A · Bug Engineer" />
-          <Stat label="Next Pipeline" value="D · Sprint Planner" />
+          <Stat label="Team Working" value={`${live.unitBoard.units.filter((u) => u.status === "Working").length} active`} />
+          <Stat label="Awaiting Input" value={`${live.unitBoard.units.filter((u) => u.status === "Needs JB" || u.status === "Waiting approval").length} units`} />
           <Stat label="Risk Posture" value="Guarded" />
         </section>
 
