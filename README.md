@@ -23,6 +23,19 @@ Mission Control acts as the coordination layer between planning, delivery, and g
 
 ---
 
+## Visuals
+
+### Current UI (Team-first + tabbed shell)
+![Current Mission Control UI](public/visuals/current-ui.png)
+
+### Office inspiration reference
+![Office reference](public/visuals/office-reference.png)
+
+### Team inspiration reference
+![Team reference](public/visuals/team-reference.png)
+
+---
+
 ## Current Features
 
 ## 1) Operator Quick Reference
