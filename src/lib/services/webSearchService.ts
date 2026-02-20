@@ -31,7 +31,7 @@ function logWebSearchEvent(params: {
     id: `evt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     agent: "Operator",
     pipeline: "D",
-    type: "web_search",
+    type: "integration",
     summary: `WEB_SEARCH provider=${params.provider} query="${params.query}" status=${params.statusCode} results=${params.resultCount}`,
     timestamp: params.timestamp,
   });

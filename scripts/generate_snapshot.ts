@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import { createRequire } from "node:module";
 
 type Task = { id: string; title: string; tier: "Tier 1" | "Tier 2" | "Tier 3"; status: "inbox" | "planned" | "doing" | "blocked" | "review" | "done"; owner: string };
 type Snapshot = {
@@ -13,6 +13,23 @@ type Snapshot = {
 };
 
 type Json = null | boolean | number | string | Json[] | { [k: string]: Json };
+
+type DbLike = { exec: (sql: string) => void; prepare: (sql: string) => { all: () => unknown[] } };
+
+function createDb(dbPath: string): DbLike {
+  const require = createRequire(import.meta.url);
+  try {
+    const sqliteModule = require("node:sqlite") as { DatabaseSync?: new (path: string) => DbLike };
+    if (sqliteModule.DatabaseSync) return new sqliteModule.DatabaseSync(dbPath);
+  } catch {
+    // Ignore, fallback below.
+  }
+
+  const betterSqlite = require("better-sqlite3") as ((path: string) => DbLike) | { default?: (path: string) => DbLike };
+  const ctor = typeof betterSqlite === "function" ? betterSqlite : betterSqlite.default;
+  if (!ctor) throw new Error("No SQLite driver available");
+  return ctor(dbPath);
+}
 
 function ensureSafeMode() {
   if (process.env.SAFE_MODE !== "true") throw new Error("SAFE_MODE must be exactly true");
@@ -42,7 +59,7 @@ function scanForbidden(value: Json, cursor = "") {
 function main() {
   ensureSafeMode();
   const root = process.cwd();
-  const db = new DatabaseSync(path.join(root, "db", "mission-control.sqlite"));
+  const db = createDb(path.join(root, "db", "mission-control.sqlite"));
   const schemaPath = path.join(root, "db", "schema.sql");
   if (existsSync(schemaPath)) db.exec(readFileSync(schemaPath, "utf8"));
   const tasks = loadTasks(path.join(root, "data", "tasks.json"));

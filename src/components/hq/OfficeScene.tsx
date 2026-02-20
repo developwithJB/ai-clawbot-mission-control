@@ -55,7 +55,7 @@ function attentionChip(status: Unit["status"]) {
 }
 
 function formatDeadline(deadline?: string) {
-  if (!deadline) return "—";
+  if (!deadline) return "N/A";
   const date = new Date(deadline);
   if (Number.isNaN(date.valueOf())) return deadline;
   return date.toLocaleString();
@@ -205,7 +205,7 @@ export function OfficeScene({ units, recentActivity, tasks }: { units: Unit[]; r
                       </div>
                       <div>
                         <dt className="text-zinc-500">Blocker</dt>
-                        <dd>{task.blocker?.trim() ? task.blocker : "—"}</dd>
+                        <dd>{task.blocker?.trim() ? task.blocker : "N/A"}</dd>
                       </div>
                       <div>
                         <dt className="text-zinc-500">Deadline</dt>
@@ -213,7 +213,7 @@ export function OfficeScene({ units, recentActivity, tasks }: { units: Unit[]; r
                       </div>
                       <div className="sm:col-span-2">
                         <dt className="text-zinc-500">Next action</dt>
-                        <dd>{task.nextAction?.trim() ? task.nextAction : "—"}</dd>
+                        <dd>{task.nextAction?.trim() ? task.nextAction : "N/A"}</dd>
                       </div>
                     </dl>
                   </article>

@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
       agent: "Operator",
       pipeline: "D",
       type: "decision",
-      summary: `Ask resolved (${body.askType}): ${body.action}${body.note ? ` — ${body.note}` : ""}`,
+      summary: `Ask resolved (${body.askType}): ${body.action}${body.note ? ` - ${body.note}` : ""}`,
       timestamp: new Date().toISOString(),
     });
 

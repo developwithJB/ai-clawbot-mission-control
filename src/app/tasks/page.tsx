@@ -4,6 +4,7 @@ import { TaskOrchestratorCard } from "@/components/hq/TaskOrchestratorCard";
 import { PRReadinessBoard } from "@/components/hq/PRReadinessBoard";
 import { PolicyGuardrails } from "@/components/hq/PolicyGuardrails";
 import { UnitSystemCard } from "@/components/hq/UnitSystemCard";
+import { ResourceLedgerPanel } from "@/components/hq/ResourceLedgerPanel";
 import { getLiveOpsSnapshot } from "@/lib/live";
 import { readTasks } from "@/lib/tasks";
 
@@ -60,6 +61,7 @@ export default async function TasksPage() {
         </div>
       </section>
 
+      <ResourceLedgerPanel ledger={live.resourceLedger} />
       <PRReadinessBoard prs={live.prReadiness} />
       <PolicyGuardrails />
     </div>
