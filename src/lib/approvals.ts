@@ -12,7 +12,7 @@ export async function readApprovals(): Promise<ApprovalItem[]> {
   return listApprovals();
 }
 
-export async function writeApprovals(_items: ApprovalItem[]): Promise<void> {
+export async function writeApprovals(): Promise<void> {
   // Phase 1: JSON writes removed. State is persisted in SQL.
 }
 
