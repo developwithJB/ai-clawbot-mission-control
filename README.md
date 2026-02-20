@@ -36,13 +36,13 @@ This repo follows a clean **Mission Control** visual language:
 Mission Control is route-driven with a shared shell and sidebar.
 
 ### Core routes
-- `/tasks` — task board, ownership, status, blockers
-- `/content` — content pipeline lane
-- `/approvals` — approval inbox + decision controls
-- `/calendar` — automations + reliability/anomaly view
-- `/memory` — searchable memory/doc history
-- `/office` — live office scene + task/events/approvals drill-down
-- `/team` — team structure and responsibilities
+- `/tasks` - task board, ownership, status, blockers
+- `/content` - content pipeline lane
+- `/approvals` - approval inbox + decision controls
+- `/calendar` - automations + reliability/anomaly view
+- `/memory` - searchable memory/doc history
+- `/office` - live office scene + task/events/approvals drill-down
+- `/team` - team structure and responsibilities
 
 ### Entry route
 - `/` redirects to `/tasks`
@@ -53,17 +53,17 @@ Mission Control is route-driven with a shared shell and sidebar.
 
 Use this 3-tier guardrail in any deployment:
 
-### Tier 1 — Reliability & Safety
+### Tier 1 - Reliability & Safety
 - Keep system stable
 - Prevent risky actions
 - Maintain auditability and approval controls
 
-### Tier 2 — Core Execution
+### Tier 2 - Core Execution
 - Ship the highest-leverage product work
 - Reduce blockers
 - Drive measurable weekly outcomes
 
-### Tier 3 — Optimization & Growth
+### Tier 3 - Optimization & Growth
 - Experiments, distribution, and incremental improvements
 - Only after Tier 1/2 health is acceptable
 
@@ -97,6 +97,51 @@ Use this 3-tier guardrail in any deployment:
 ### Team
 - role and responsibility map
 - handoff visibility
+
+---
+
+## Free Hosted TV Mode (Sprint 1)
+
+Zero-cost hosted dashboard with local secure execution:
+- no paid services required
+- no inbound Mac ports (outbound GitHub push/poll only)
+- hosted surface is read-only
+
+### Environment
+Create env from `.env.example`:
+- `SAFE_MODE=true`
+- `SNAPSHOT_REPO`, `SNAPSHOT_BRANCH`, `SNAPSHOT_PAT`
+- `APPROVAL_REPO`, `APPROVAL_ACTORS`
+
+### Snapshot publish (every 5 minutes)
+```bash
+bash scripts/publish_snapshot.sh
+```
+
+Pipeline:
+1. Runs `scripts/generate_snapshot.ts`
+2. Copies to `dashboard/snapshot.json`
+3. Commits/pushes using local git + PAT env
+4. Writes success/failure entries to `data/local-events.log`
+5. On failure sends macOS notification (`osascript`)
+
+### launchd examples
+- `docs/operations/launchd/com.missioncontrol.snapshot-publish.plist` (every 5 min)
+- `docs/operations/launchd/com.missioncontrol.approvals-poll.plist` (every 60s)
+
+### GitHub Pages
+Serve `dashboard/` with GitHub Pages for read-only hosted TV.
+
+### Mobile approvals via GitHub Issues
+```bash
+node --experimental-strip-types scripts/poll_approvals.ts
+```
+
+- Polls local pending approvals
+- Opens/tracks GitHub Issues per approval
+- Accepts only whitelist actors from `APPROVAL_ACTORS`
+- Decision must be exact one-line `approve` or `reject` (case-insensitive)
+- On decision: closes issue, writes local DB event, logs local unblock record
 
 ---
 
@@ -166,6 +211,15 @@ src/
     tasks.ts
     memory.ts
     services/
+
+scripts/
+  generate_snapshot.ts
+  publish_snapshot.sh
+  poll_approvals.ts
+
+dashboard/
+  index.html
+  snapshot.json
 
 docs/
   operations/

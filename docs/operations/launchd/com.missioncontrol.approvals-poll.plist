@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>Label</key><string>com.missioncontrol.approvals-poll</string>
+<key>ProgramArguments</key><array><string>/usr/bin/env</string><string>node</string><string>--experimental-strip-types</string><string>/Users/REPLACE_ME/.openclaw/workspace/repos/ai-clawbot-mission-control/scripts/poll_approvals.ts</string></array>
+<key>WorkingDirectory</key><string>/Users/REPLACE_ME/.openclaw/workspace/repos/ai-clawbot-mission-control</string>
+<key>StartInterval</key><integer>60</integer>
+<key>RunAtLoad</key><true/>
+<key>EnvironmentVariables</key><dict><key>APPROVAL_REPO</key><string>developwithJB/ai-clawbot-mission-control</string><key>APPROVAL_ACTORS</key><string>developwithJB</string></dict>
+<key>StandardOutPath</key><string>/tmp/mission-control-approvals.out.log</string>
+<key>StandardErrorPath</key><string>/tmp/mission-control-approvals.err.log</string>
+</dict></plist>
