@@ -156,6 +156,54 @@ If you’re just learning, start here:
 
 ---
 
+## Free Hosted TV Mode (Sprint 1)
+
+Zero-cost hosted dashboard with local secure execution:
+
+- No paid services required
+- No inbound Mac ports (outbound GitHub push/poll only)
+
+### Environment
+
+Create env from `.env.example`:
+- `SAFE_MODE=true`
+- `SNAPSHOT_REPO`, `SNAPSHOT_BRANCH`, `SNAPSHOT_PAT`
+- `APPROVAL_REPO`, `APPROVAL_ACTORS`
+
+### Snapshot publish (5 minutes)
+
+```bash
+bash scripts/publish_snapshot.sh
+```
+
+Pipeline:
+1. Runs `scripts/generate_snapshot.ts`
+2. Copies to `dashboard/snapshot.json`
+3. Commits/pushes using local git + PAT env
+4. Writes success/failure entries to `data/local-events.log`
+5. On failure sends macOS notification (`osascript`)
+
+### launchd examples
+
+- `docs/operations/launchd/com.missioncontrol.snapshot-publish.plist` (every 5 min)
+- `docs/operations/launchd/com.missioncontrol.approvals-poll.plist` (every 60s)
+
+### GitHub Pages
+
+Serve `dashboard/` with GitHub Pages for read-only hosted TV.
+
+### Mobile approvals via GitHub Issues
+
+```bash
+node --experimental-strip-types scripts/poll_approvals.ts
+```
+
+- Polls local pending approvals
+- Opens/tracks GitHub Issues per approval
+- Accepts only whitelist actors from `APPROVAL_ACTORS`
+- Decision must be exact one-line `approve` or `reject` (case-insensitive)
+- On decision: closes issue, writes local DB event, logs local unblock record
+
 ## Docs
 
 - `docs/operations/MISSION_CONTROL_UNIT_SYSTEM_v1.md`
