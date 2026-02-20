@@ -2,9 +2,24 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import { createRequire } from "node:module";
 
 type IssueMap = Record<string, number>;
+type DbLike = { exec: (sql: string) => void; prepare: (sql: string) => { all: () => unknown[]; run: (...params: unknown[]) => { changes: number } } };
+
+function createDb(dbPath: string): DbLike {
+  const require = createRequire(import.meta.url);
+  try {
+    const sqliteModule = require("node:sqlite") as { DatabaseSync?: new (path: string) => DbLike };
+    if (sqliteModule.DatabaseSync) return new sqliteModule.DatabaseSync(dbPath);
+  } catch {
+    // Ignore, fallback below.
+  }
+  const betterSqlite = require("better-sqlite3") as ((path: string) => DbLike) | { default?: (path: string) => DbLike };
+  const ctor = typeof betterSqlite === "function" ? betterSqlite : betterSqlite.default;
+  if (!ctor) throw new Error("No SQLite driver available");
+  return ctor(dbPath);
+}
 
 function sh(cmd: string, args: string[]): string {
   return execFileSync(cmd, args, { encoding: "utf8" }).trim();
@@ -40,7 +55,7 @@ function main() {
   if (actors.length === 0) throw new Error("APPROVAL_ACTORS is required");
 
   const root = process.cwd();
-  const db = new DatabaseSync(path.join(root, "db", "mission-control.sqlite"));
+  const db = createDb(path.join(root, "db", "mission-control.sqlite"));
   const schemaPath = path.join(root, "db", "schema.sql");
   if (existsSync(schemaPath)) db.exec(readFileSync(schemaPath, "utf8"));
   const mapFile = path.join(root, "data", "approval-issues.json");

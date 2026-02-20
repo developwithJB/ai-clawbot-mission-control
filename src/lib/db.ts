@@ -53,6 +53,16 @@ function getDatabaseSyncConstructor(): DatabaseSyncConstructor {
   );
 }
 
+function hasColumn(db: DatabaseSync, tableName: string, columnName: string): boolean {
+  const rows = db.prepare(`PRAGMA table_info(${tableName})`).all() as Array<{ name: string }>;
+  return rows.some((row) => row.name === columnName);
+}
+
+function addColumnIfMissing(db: DatabaseSync, tableName: string, sqlFragment: string, columnName: string): void {
+  if (hasColumn(db, tableName, columnName)) return;
+  db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${sqlFragment}`);
+}
+
 function migrateEventsTable(db: DatabaseSync) {
   const row = db
     .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'events'")
@@ -79,7 +89,8 @@ function migrateEventsTable(db: DatabaseSync) {
         decided_by TEXT,
         decided_at TEXT,
         request_id TEXT,
-        trace_id TEXT
+        trace_id TEXT,
+        agent_id TEXT
       );
 
       INSERT INTO events_v2 (id, agent, pipeline, type, summary, timestamp)
@@ -94,6 +105,66 @@ function migrateEventsTable(db: DatabaseSync) {
     db.exec("ROLLBACK");
     throw error;
   }
+}
+
+function migratePhase2(db: DatabaseSync): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS agents (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL UNIQUE,
+      kind TEXT NOT NULL DEFAULT 'system',
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS tasks (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      tier TEXT NOT NULL CHECK (tier IN ('Tier 1', 'Tier 2', 'Tier 3')),
+      status TEXT NOT NULL CHECK (status IN ('inbox', 'planned', 'doing', 'blocked', 'review', 'done')),
+      owner TEXT NOT NULL,
+      deadline TEXT,
+      blocker TEXT,
+      next_action TEXT,
+      updated_at TEXT NOT NULL,
+      agent_id TEXT REFERENCES agents(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS units (
+      code TEXT PRIMARY KEY,
+      codename TEXT NOT NULL,
+      icon TEXT NOT NULL,
+      tier INTEGER NOT NULL CHECK (tier IN (1, 2, 3)),
+      reports_to TEXT,
+      active INTEGER NOT NULL DEFAULT 1,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS live_snapshots (
+      id TEXT PRIMARY KEY,
+      generated_at TEXT NOT NULL,
+      payload_json TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS resource_ledger (
+      id TEXT PRIMARY KEY,
+      category TEXT NOT NULL CHECK (category IN ('tokens', 'cron', 'failure', 'retry', 'baseline')),
+      label TEXT NOT NULL,
+      tokens_in INTEGER NOT NULL DEFAULT 0,
+      tokens_out INTEGER NOT NULL DEFAULT 0,
+      usage_estimate_usd REAL NOT NULL DEFAULT 0,
+      metadata_json TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
+    CREATE INDEX IF NOT EXISTS idx_tasks_updated_at ON tasks(updated_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_live_snapshots_generated_at ON live_snapshots(generated_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_resource_ledger_created_at ON resource_ledger(created_at DESC);
+  `);
+
+  addColumnIfMissing(db, "approvals", "agent_id TEXT REFERENCES agents(id)", "agent_id");
+  addColumnIfMissing(db, "events", "agent_id TEXT REFERENCES agents(id)", "agent_id");
 }
 
 function initDb(): DatabaseSync {
@@ -115,6 +186,7 @@ function initDb(): DatabaseSync {
   const schemaSql = readFileSync(schemaPath, "utf8");
   db.exec(schemaSql);
   migrateEventsTable(db);
+  migratePhase2(db);
 
   return db;
 }

@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { getDb, withTransaction } from "@/lib/db";
+import { ensureAgent } from "@/lib/services/agentService";
 import { appendEvent } from "@/lib/services/eventService";
 
 export type ApprovalLevel = "High" | "Medium";
@@ -14,6 +15,7 @@ export type ApprovalItem = {
   status: ApprovalStatus;
   version: number;
   createdAt: string;
+  agentId?: string | null;
 };
 
 type ResolveResult =
@@ -29,6 +31,7 @@ type ApprovalRow = {
   status: ApprovalStatus;
   version: number;
   created_at: string;
+  agent_id: string | null;
 };
 
 type ResolveMeta = {
@@ -67,6 +70,7 @@ function toApprovalItem(row: ApprovalRow): ApprovalItem {
     status: row.status,
     version: row.version,
     createdAt: row.created_at,
+    agentId: row.agent_id,
   };
 }
 
@@ -98,8 +102,8 @@ function ensureSeeded(): void {
   const row = db.prepare("SELECT COUNT(*) AS count FROM approvals").get() as { count: number };
   if (row.count === 0) {
     const insert = db.prepare(
-      `INSERT INTO approvals (id, item, reason, level, status, version, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO approvals (id, item, reason, level, status, version, created_at, agent_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     );
 
     for (const approval of loadLegacySeed()) {
@@ -111,6 +115,7 @@ function ensureSeeded(): void {
         approval.status,
         1,
         approval.createdAt,
+        ensureAgent("Operator", "system"),
       );
     }
   }
@@ -123,7 +128,7 @@ export function listApprovals(): ApprovalItem[] {
   const db = getDb();
   const rows = db
     .prepare(
-      `SELECT id, item, reason, level, status, version, created_at
+      `SELECT id, item, reason, level, status, version, created_at, agent_id
        FROM approvals
        ORDER BY datetime(created_at) DESC`
     )
@@ -137,7 +142,7 @@ export function getApprovalById(id: string): ApprovalItem | null {
   const db = getDb();
   const row = db
     .prepare(
-      `SELECT id, item, reason, level, status, version, created_at
+      `SELECT id, item, reason, level, status, version, created_at, agent_id
        FROM approvals
        WHERE id = ?`
     )
@@ -160,7 +165,7 @@ export function resolveApproval(
     const db = getDb();
     const current = db
       .prepare(
-        `SELECT id, item, reason, level, status, version, created_at
+        `SELECT id, item, reason, level, status, version, created_at, agent_id
          FROM approvals
          WHERE id = ?`
       )
@@ -185,7 +190,7 @@ export function resolveApproval(
     if (updateResult.changes === 0) {
       const latest = db
         .prepare(
-          `SELECT id, item, reason, level, status, version, created_at
+          `SELECT id, item, reason, level, status, version, created_at, agent_id
            FROM approvals
            WHERE id = ?`
         )
@@ -195,7 +200,7 @@ export function resolveApproval(
 
     const updated = db
       .prepare(
-        `SELECT id, item, reason, level, status, version, created_at
+        `SELECT id, item, reason, level, status, version, created_at, agent_id
          FROM approvals
          WHERE id = ?`
       )

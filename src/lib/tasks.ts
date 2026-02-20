@@ -1,49 +1,14 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
 import type { TaskStatus, Tier } from "@/lib/state-types";
+import { listTasks, replaceTasks, type TaskItem } from "@/lib/services/taskService";
 
-export type TaskItem = {
-  id: string;
-  title: string;
-  tier: Tier;
-  status: TaskStatus;
-  owner: string;
-  deadline?: string;
-  blocker?: string;
-  nextAction?: string;
-  updatedAt?: string;
-};
-
-const filePath = path.join(process.cwd(), "data", "tasks.json");
-
-const seed: TaskItem[] = [
-  {
-    id: "task-seed",
-    title: "Ship Tier-1 Mission Control surfaces",
-    tier: "Tier 1",
-    status: "doing",
-    owner: "Operator",
-    deadline: new Date(Date.now() + 86400000).toISOString(),
-    blocker: "",
-    nextAction: "Implement task board + memory + team + calendar reliability",
-    updatedAt: new Date().toISOString(),
-  },
-];
+export type { TaskItem };
 
 export async function readTasks(): Promise<TaskItem[]> {
-  try {
-    const raw = await readFile(filePath, "utf8");
-    return JSON.parse(raw) as TaskItem[];
-  } catch {
-    await mkdir(path.dirname(filePath), { recursive: true });
-    await writeFile(filePath, JSON.stringify(seed, null, 2));
-    return seed;
-  }
+  return listTasks();
 }
 
 export async function writeTasks(tasks: TaskItem[]): Promise<void> {
-  await mkdir(path.dirname(filePath), { recursive: true });
-  await writeFile(filePath, JSON.stringify(tasks, null, 2));
+  replaceTasks(tasks);
 }
 
 export function rankTasks(tasks: TaskItem[]): TaskItem[] {

@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { getDb, withTransaction } from "@/lib/db";
+import { ensureAgent } from "@/lib/services/agentService";
 
 export type EventItem = {
   id: string;
@@ -16,6 +17,7 @@ export type EventItem = {
   decidedAt?: string | null;
   requestId?: string | null;
   traceId?: string | null;
+  agentId?: string | null;
 };
 
 type EventRow = {
@@ -32,6 +34,7 @@ type EventRow = {
   decided_at: string | null;
   request_id: string | null;
   trace_id: string | null;
+  agent_id: string | null;
 };
 
 let seeded = false;
@@ -62,6 +65,7 @@ function toEventItem(row: EventRow): EventItem {
     decidedAt: row.decided_at,
     requestId: row.request_id,
     traceId: row.trace_id,
+    agentId: row.agent_id,
   };
 }
 
@@ -86,12 +90,20 @@ function ensureSeeded(): void {
   const row = db.prepare("SELECT COUNT(*) AS count FROM events").get() as { count: number };
   if (row.count === 0) {
     const insert = db.prepare(
-      `INSERT INTO events (id, agent, pipeline, type, summary, timestamp)
-       VALUES (?, ?, ?, ?, ?, ?)`
+      `INSERT INTO events (id, agent, pipeline, type, summary, timestamp, agent_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
     );
 
     for (const event of loadLegacySeed()) {
-      insert.run(event.id, event.agent, event.pipeline, event.type, event.summary, event.timestamp);
+      insert.run(
+        event.id,
+        event.agent,
+        event.pipeline,
+        event.type,
+        event.summary,
+        event.timestamp,
+        ensureAgent(event.agent, "system"),
+      );
     }
   }
 
@@ -104,7 +116,7 @@ export function listEvents(limit = 200): EventItem[] {
   const rows = db
     .prepare(
       `SELECT id, agent, pipeline, type, summary, timestamp,
-              approval_id, previous_status, new_status, decided_by, decided_at, request_id, trace_id
+              approval_id, previous_status, new_status, decided_by, decided_at, request_id, trace_id, agent_id
        FROM events
        ORDER BY datetime(timestamp) DESC
        LIMIT ?`
@@ -122,8 +134,8 @@ export function appendEvent(event: EventItem): void {
     db.prepare(
       `INSERT INTO events (
           id, agent, pipeline, type, summary, timestamp,
-          approval_id, previous_status, new_status, decided_by, decided_at, request_id, trace_id
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          approval_id, previous_status, new_status, decided_by, decided_at, request_id, trace_id, agent_id
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       event.id,
       event.agent,
@@ -138,6 +150,7 @@ export function appendEvent(event: EventItem): void {
       event.decidedAt ?? null,
       event.requestId ?? null,
       event.traceId ?? null,
+      event.agentId ?? ensureAgent(event.agent, "system"),
     );
 
     const staleIds = db

@@ -1,12 +1,16 @@
+import { randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { getDb, withTransaction } from "@/lib/db";
 import { readEvents } from "@/lib/events";
 import { readRepoGraph } from "@/lib/repositories";
 import { readApprovals } from "@/lib/approvals";
 import { rankTasks, readTasks } from "@/lib/tasks";
 import { scorePrReadiness } from "@/lib/pr-risk";
-import { detectWrenchTriggers } from "@/lib/unit-governance";
+import { detectWrenchTriggers, UNIT_REGISTRY } from "@/lib/unit-governance";
 import { listRecentTelegramOutbox } from "@/lib/services/telegramService";
+import { listUnits } from "@/lib/services/unitService";
+import { getResourceLedgerSummary, type ResourceLedgerSummary } from "@/lib/services/resourceLedgerService";
 
 type EventItem = {
   id: string;
@@ -22,6 +26,7 @@ type EventItem = {
   decidedAt?: string | null;
   requestId?: string | null;
   traceId?: string | null;
+  agentId?: string | null;
 };
 
 const execFileAsync = promisify(execFile);
@@ -71,6 +76,7 @@ export type LiveOpsSnapshot = {
     wrenchChips: { reason: string; lane: string }[];
     telegramFeed: { id: string; type: string; status: "queued" | "sent" | "failed"; message: string; createdAt: string }[];
   };
+  resourceLedger: ResourceLedgerSummary;
 };
 
 async function ghJson<T>(args: string[]): Promise<{ data: T | null; error?: string }> {
@@ -82,8 +88,60 @@ async function ghJson<T>(args: string[]): Promise<{ data: T | null; error?: stri
   }
 }
 
-export async function getLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
-  const [issueRes, prRes, events, repoGraph, approvals, tasks] = await Promise.all([
+function buildUnitBoard(wrenchChips: { reason: string; lane: string }[]) {
+  const statusOverrides: Record<string, "Idle" | "Working" | "Blocked" | "Needs JB" | "Waiting approval"> = {
+    "PROD-1": "Working",
+    "OPS-1": "Working",
+    "ARCH-1": "Working",
+    "ENG-1": "Working",
+    "GOV-1": "Idle",
+    "REV-1": "Idle",
+    "GTM-1": "Idle",
+    "CONTRA-1": wrenchChips.length ? "Working" : "Idle",
+  };
+
+  const objectiveOverrides: Record<string, string> = {
+    "PROD-1": "Protect Tier 1 roadmap integrity",
+    "OPS-1": "Sequence sprint against Tier ladder",
+    "ARCH-1": "Validate service boundaries (approved with conditions)",
+    "ENG-1": "Ship stable increments",
+    "GOV-1": "Enforce sensitive action approvals",
+    "REV-1": "Model monetization on shipped value",
+    "GTM-1": "Distribute validated outcomes",
+    "CONTRA-1": "Stress-test plan quality and tier proof",
+  };
+
+  const nextOwnerOverrides: Record<string, string> = {
+    "PROD-1": "OPS-1",
+    "OPS-1": "ARCH-1",
+    "ARCH-1": "ENG-1",
+    "ENG-1": "GOV-1",
+    "GOV-1": "JB",
+    "REV-1": "GTM-1",
+    "GTM-1": "REV-1",
+    "CONTRA-1": wrenchChips.length ? "PROD-1" : "OPS-1",
+  };
+
+  return listUnits().map((unit) => {
+    if (!UNIT_REGISTRY[unit.code]) {
+      throw new Error(`Unit consistency check failed: ${unit.code} missing from UNIT_REGISTRY`);
+    }
+
+    return {
+      code: unit.code,
+      codename: unit.codename,
+      icon: unit.icon,
+      status: statusOverrides[unit.code] ?? "Idle",
+      objective: objectiveOverrides[unit.code] ?? UNIT_REGISTRY[unit.code].mission,
+      tier: unit.tier,
+      lastUpdate: new Date().toISOString(),
+      nextOwner: nextOwnerOverrides[unit.code] ?? "OPS-1",
+    };
+  });
+}
+
+async function generateLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
+  const [issueRes, prRes, events, repoGraph, approvals, tasks, resourceLedger] = await Promise.all([
     ghJson<GitHubItem[]>([
       "issue", "list", "--repo", "developwithJB/thecontrollables", "--state", "open", "--limit", "10", "--json", "number,title,url,labels",
     ]),
@@ -94,6 +152,7 @@ export async function getLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
     readRepoGraph(),
     readApprovals(),
     readTasks(),
+    getResourceLedgerSummary(),
   ]);
 
   const rankedTasks = rankTasks(tasks);
@@ -127,6 +186,7 @@ export async function getLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
 
   const githubError = issueRes.error ?? prRes.error;
   const prReadiness = scorePrReadiness(prRes.data ?? []);
+  const units = buildUnitBoard(wrenchChips);
 
   return {
     github: {
@@ -147,19 +207,69 @@ export async function getLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
     prReadiness,
     repoGraph,
     unitBoard: {
-      units: [
-        { code: "PROD-1", codename: "Compass", icon: "🧭", status: "Working", objective: "Protect Tier 1 roadmap integrity", tier: 1, lastUpdate: new Date().toISOString(), nextOwner: "OPS-1" },
-        { code: "OPS-1", codename: "Flow", icon: "🌊", status: "Working", objective: "Sequence sprint against Tier ladder", tier: 1, lastUpdate: new Date().toISOString(), nextOwner: "ARCH-1" },
-        { code: "ARCH-1", codename: "Spine", icon: "🧬", status: "Working", objective: "Validate service boundaries (approved with conditions)", tier: 1, lastUpdate: new Date().toISOString(), nextOwner: "ENG-1" },
-        { code: "ENG-1", codename: "Builder", icon: "🔨", status: "Working", objective: "Ship stable increments", tier: 1, lastUpdate: new Date().toISOString(), nextOwner: "GOV-1" },
-        { code: "GOV-1", codename: "Gatekeeper", icon: "🛡", status: "Idle", objective: "Enforce sensitive action approvals", tier: 1, lastUpdate: new Date().toISOString(), nextOwner: "JB" },
-        { code: "REV-1", codename: "Monetizer", icon: "💰", status: "Idle", objective: "Model monetization on shipped value", tier: 2, lastUpdate: new Date().toISOString(), nextOwner: "FIN-1" },
-        { code: "FIN-1", codename: "Investor", icon: "📈", status: "Working", objective: "Run disciplined $3,100 capital experiment (Coinbase + Robinhood)", tier: 2, lastUpdate: new Date().toISOString(), nextOwner: "REV-1" },
-        { code: "GTM-1", codename: "Amplifier", icon: "📣", status: "Idle", objective: "Distribute validated outcomes", tier: 2, lastUpdate: new Date().toISOString(), nextOwner: "REV-1" },
-        { code: "CONTRA-1", codename: "Wrench", icon: "🧨", status: wrenchChips.length ? "Working" : "Idle", objective: "Stress-test plan quality and tier proof", tier: 1, lastUpdate: new Date().toISOString(), nextOwner: wrenchChips.length ? "PROD-1" : "OPS-1" },
-      ],
+      units,
       wrenchChips,
       telegramFeed,
     },
+    resourceLedger,
   };
+}
+
+const SNAPSHOT_TTL_MS = 30000;
+
+function readCachedSnapshot(nowIso: string): LiveOpsSnapshot | null {
+  const db = getDb();
+  const row = db
+    .prepare(
+      `SELECT payload_json, generated_at
+       FROM live_snapshots
+       ORDER BY datetime(generated_at) DESC
+       LIMIT 1`
+    )
+    .get() as { payload_json: string; generated_at: string } | undefined;
+
+  if (!row) return null;
+
+  const ageMs = new Date(nowIso).valueOf() - new Date(row.generated_at).valueOf();
+  if (ageMs > SNAPSHOT_TTL_MS) return null;
+
+  try {
+    return JSON.parse(row.payload_json) as LiveOpsSnapshot;
+  } catch {
+    return null;
+  }
+}
+
+function persistSnapshot(snapshot: LiveOpsSnapshot): void {
+  withTransaction(() => {
+    const db = getDb();
+    db.prepare(
+      `INSERT INTO live_snapshots (id, generated_at, payload_json)
+       VALUES (?, ?, ?)`
+    ).run(randomUUID(), new Date().toISOString(), JSON.stringify(snapshot));
+
+    const staleIds = db
+      .prepare(
+        `SELECT id
+         FROM live_snapshots
+         ORDER BY datetime(generated_at) DESC
+         LIMIT -1 OFFSET 50`
+      )
+      .all() as Array<{ id: string }>;
+
+    if (staleIds.length > 0) {
+      const remove = db.prepare("DELETE FROM live_snapshots WHERE id = ?");
+      for (const row of staleIds) remove.run(row.id);
+    }
+  });
+}
+
+export async function getLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
+  const nowIso = new Date().toISOString();
+  const cached = readCachedSnapshot(nowIso);
+  if (cached) return cached;
+
+  const snapshot = await generateLiveOpsSnapshot();
+  persistSnapshot(snapshot);
+  return snapshot;
 }
