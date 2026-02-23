@@ -93,6 +93,7 @@ function mapUnitApprovals(unit: PixelUnit, approvals: OfficeApproval[]) {
   return approvals.filter((a) => containsToken(`${a.item} ${a.reason} ${a.id}`.toLowerCase(), unit.code.toLowerCase()) || containsToken(`${a.item} ${a.reason}`.toLowerCase(), unit.codename.toLowerCase()) || (unit.code === "GOV-1" && a.status === "pending")).slice(0, 5);
 }
 
+
 export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -117,59 +118,92 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
     const g = bg.getContext("2d");
     if (!g) return;
     g.imageSmoothingEnabled = false;
-    g.fillStyle = "#020617";
+    g.fillStyle = "#030712";
     g.fillRect(0, 0, WORLD_W, WORLD_H);
 
-    // Floor tiles (warmer, office-like palette)
+    // Isometric-feel parquet floor with subtle depth bands
     for (let y = 0; y < WORLD_H; y += TILE) {
       for (let x = 0; x < WORLD_W; x += TILE) {
-        const isAlt = ((x / TILE) + (y / TILE)) % 2 === 0;
-        g.fillStyle = isAlt ? "#111827" : "#0f172a";
+        const row = Math.floor(y / TILE);
+        const col = Math.floor(x / TILE);
+        const diag = (col - row + 80) % 4;
+        const tone = diag === 0 ? "#1f2937" : diag === 1 ? "#172030" : diag === 2 ? "#111827" : "#0b1220";
+        g.fillStyle = tone;
         g.fillRect(x, y, TILE, TILE);
+        g.fillStyle = "rgba(148,163,184,0.06)";
+        g.fillRect(x, y, TILE, 1);
       }
     }
 
-    // Hallway carpet strips to break up grid / add room identity
-    g.fillStyle = "#1f2937";
-    g.fillRect(3 * TILE, 14 * TILE, 66 * TILE, 3 * TILE);
-    g.fillRect(18 * TILE, 3 * TILE, 3 * TILE, 35 * TILE);
+    // Room shell with top and side walls to fake isometric framing
+    g.fillStyle = "#0f172a";
+    g.fillRect(2 * TILE, 2 * TILE, 68 * TILE, 3 * TILE);
+    g.fillStyle = "#111827";
+    g.fillRect(67 * TILE, 5 * TILE, 3 * TILE, 37 * TILE);
+    g.fillStyle = "#111827";
+    g.fillRect(2 * TILE, 5 * TILE, 3 * TILE, 37 * TILE);
 
-    // Outer walls
     g.strokeStyle = "#334155";
-    g.lineWidth = 4;
+    g.lineWidth = 2;
     g.strokeRect(2 * TILE, 2 * TILE, 68 * TILE, 40 * TILE);
 
-    // Windows (top wall)
+    // Hall runners and central transit lane
+    g.fillStyle = "#3f2b4a";
+    g.fillRect(4 * TILE, 14 * TILE, 64 * TILE, 4 * TILE);
+    g.fillStyle = "#4c1d95";
+    for (let x = 5 * TILE; x < 66 * TILE; x += 3 * TILE) g.fillRect(x, 16 * TILE, TILE, 1);
+
+    g.fillStyle = "#1e293b";
+    g.fillRect(20 * TILE, 4 * TILE, 2 * TILE, 34 * TILE);
+
+    // Windows + blinds + sill highlights
     for (let i = 0; i < 7; i += 1) {
+      const wx = (6 + i * 9) * TILE;
       g.fillStyle = "#0ea5e9";
-      g.fillRect((6 + i * 9) * TILE, 2 * TILE, 5 * TILE, 1 * TILE);
-      g.fillStyle = "rgba(186,230,253,0.45)";
-      g.fillRect((6 + i * 9) * TILE, 2 * TILE, 5 * TILE, 0.5 * TILE);
+      g.fillRect(wx, 3 * TILE, 5 * TILE, TILE);
+      g.fillStyle = "#67e8f9";
+      g.fillRect(wx + 1, 3 * TILE, 3 * TILE, 1);
+      g.fillStyle = "#64748b";
+      g.fillRect(wx, 4 * TILE, 5 * TILE, 1);
     }
 
-    Object.values(ZONES).forEach((z) => {
-      // desk cluster area
-      g.fillStyle = "#0b1220";
-      g.fillRect(z.x, z.y, z.w, z.h);
+    Object.values(ZONES).forEach((z, idx) => {
+      const zy = z.y;
+      const zh = z.h;
+      const zx = z.x;
+
+      // platform / rug for each team area
+      g.fillStyle = idx % 2 === 0 ? "#0b1220" : "#111827";
+      g.fillRect(zx - 2, zy - 2, z.w + 4, zh + 4);
       g.strokeStyle = "#334155";
-      g.lineWidth = 2;
-      g.strokeRect(z.x, z.y, z.w, z.h);
+      g.strokeRect(zx - 2, zy - 2, z.w + 4, zh + 4);
 
-      // desk furniture
-      g.fillStyle = "#475569";
-      g.fillRect(z.x + 6, z.y + z.h - 14, z.w - 12, 8);
-      g.fillStyle = "#1e293b";
-      g.fillRect(z.x + 8, z.y + z.h - 12, z.w - 16, 4);
+      // desk bank (back edge lighter, front edge darker)
+      g.fillStyle = "#64748b";
+      g.fillRect(zx + 4, zy + zh - 14, z.w - 8, 5);
+      g.fillStyle = "#334155";
+      g.fillRect(zx + 4, zy + zh - 9, z.w - 8, 7);
 
-      // monitor glow blocks
-      g.fillStyle = "rgba(56,189,248,0.35)";
-      g.fillRect(z.x + z.w / 2 - 8, z.y + z.h - 20, 16, 6);
+      // monitors
+      const stations = Math.max(2, Math.floor(z.w / 28));
+      for (let i = 0; i < stations; i += 1) {
+        const mx = zx + 8 + i * 24;
+        g.fillStyle = "#0f172a";
+        g.fillRect(mx, zy + zh - 20, 10, 6);
+        g.fillStyle = "#22d3ee";
+        g.fillRect(mx + 1, zy + zh - 19, 8, 4);
+      }
 
-      // plant / decor pixel
-      g.fillStyle = "#16a34a";
-      g.fillRect(z.x + 4, z.y + 4, 4, 4);
+      // decor: potted plant + wall frame
       g.fillStyle = "#14532d";
-      g.fillRect(z.x + 4, z.y + 8, 4, 2);
+      g.fillRect(zx + z.w - 10, zy + 4, 5, 5);
+      g.fillStyle = "#22c55e";
+      g.fillRect(zx + z.w - 11, zy + 1, 7, 4);
+
+      g.fillStyle = "#1e293b";
+      g.fillRect(zx + 4, zy + 3, 8, 6);
+      g.fillStyle = "#7dd3fc";
+      g.fillRect(zx + 5, zy + 4, 6, 4);
     });
 
     bgRef.current = bg;
@@ -338,44 +372,67 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
         const px = Math.floor(actor.x);
         const py = Math.floor(actor.y);
 
-        ctx.strokeStyle = tierColor(u.tier);
-        ctx.lineWidth = 2;
-        ctx.strokeRect(px - 9, py - 17, 18, 18);
-
-        const bob = u.status === "Idle" ? Math.sin(now / 500 + px) * 0.8 : 0;
+        const bob = u.status === "Idle" ? Math.sin(now / 520 + px) * 0.8 : 0;
         const blink = u.status === "Blocked" ? (Math.floor(now / 240) % 2 === 0 ? 1 : 0.4) : 1;
+        const frameNudge = actor.frame % 2 === 0 ? 0 : 1;
+        const sy = Math.floor(py + bob);
+
+        // shadow + tile anchor
+        ctx.fillStyle = "rgba(2,6,23,0.65)";
+        ctx.fillRect(px - 6, sy + 2, 12, 4);
+        ctx.fillStyle = "rgba(30,41,59,0.8)";
+        ctx.fillRect(px - 7, sy + 1, 14, 1);
+
+        // tier ring + body with more pixel detail
+        ctx.strokeStyle = tierColor(u.tier);
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px - 8, sy - 15, 16, 16);
         ctx.globalAlpha = blink;
 
-        ctx.fillStyle = "#0b1220";
-        ctx.fillRect(px - 8, Math.floor(py - 16 + bob), 16, 16);
-
+        ctx.fillStyle = "#111827";
+        ctx.fillRect(px - 5, sy - 10, 10, 9);
         ctx.fillStyle = statusColor(u.status);
-        const frameNudge = actor.frame % 2 === 0 ? 0 : 1;
-        ctx.fillRect(px - 5 + frameNudge, Math.floor(py - 12 + bob), 10, 10);
+        ctx.fillRect(px - 4 + frameNudge, sy - 9, 8, 7);
+        ctx.fillStyle = "#e2e8f0";
+        ctx.fillRect(px - 1 + frameNudge, sy - 8, 2, 2);
+
+        // head
+        ctx.fillStyle = "#f8d6b8";
+        ctx.fillRect(px - 3, sy - 14, 6, 5);
+        ctx.fillStyle = "#7c2d12";
+        ctx.fillRect(px - 3, sy - 14, 6, 1);
+
+        // tiny desk-facing hint when idle/working
+        if (u.status === "Working" || u.status === "Idle") {
+          ctx.fillStyle = "#475569";
+          ctx.fillRect(px - 6, sy - 1, 12, 2);
+          ctx.fillStyle = "#22d3ee";
+          ctx.fillRect(px - 3, sy - 2, 6, 1);
+        }
 
         // Employee identity is their associated emoji (required)
         ctx.font = "10px sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(u.icon, px, Math.floor(py - 7 + bob));
+        ctx.fillText(u.icon, px, sy - 19);
         ctx.textAlign = "start";
         ctx.textBaseline = "alphabetic";
         ctx.globalAlpha = 1;
 
         const statusBubble = u.status === "Needs JB" ? "!" : u.status === "Waiting approval" ? "…" : u.status === "Blocked" ? "x" : u.status === "Working" ? "*" : "-";
         ctx.fillStyle = "#111827";
-        ctx.fillRect(px - 6, py - 28, 12, 10);
+        ctx.fillRect(px - 6, sy - 30, 12, 10);
         ctx.strokeStyle = statusColor(u.status);
-        ctx.strokeRect(px - 6, py - 28, 12, 10);
+        ctx.strokeRect(px - 6, sy - 30, 12, 10);
         ctx.fillStyle = "#e5e7eb";
         ctx.font = "8px monospace";
-        ctx.fillText(statusBubble, px - 2, py - 20);
+        ctx.fillText(statusBubble, px - 2, sy - 22);
 
         ctx.fillStyle = "rgba(2,6,23,0.9)";
-        ctx.fillRect(px - 22, py + 4, 44, 10);
+        ctx.fillRect(px - 22, sy + 5, 44, 10);
         ctx.fillStyle = "#e2e8f0";
         ctx.font = "8px monospace";
-        ctx.fillText(u.codename.slice(0, 10), px - 20, py + 12);
+        ctx.fillText(u.codename.slice(0, 10), px - 20, sy + 13);
       });
 
       particlesRef.current.forEach((p) => {
