@@ -431,22 +431,6 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
 
-      const zoomSmoothness = cameraTuningRef.current.zoomSmoothness;
-      const selected = units.find((u) => u.code === selectedCode);
-      if (selected) {
-        const isJbQueue = selected.status === "Blocked" || selected.status === "Needs JB" || selected.status === "Waiting approval";
-        const z = ZONES[selected.code] ?? ZONES["OPS-1"];
-        const focusX = isJbQueue ? JB_OFFICE.x + JB_OFFICE.w / 2 : z.x + z.w / 2;
-        const focusY = isJbQueue ? JB_OFFICE.y + JB_OFFICE.h / 2 : z.y + z.h / 2;
-        camX += (focusX - camX) * zoomSmoothness;
-        camY += (focusY - camY) * zoomSmoothness;
-        camZoom += (1.65 - camZoom) * zoomSmoothness;
-      } else {
-        camX += (WORLD_W / 2 - camX) * zoomSmoothness;
-        camY += (WORLD_H / 2 - camY) * zoomSmoothness;
-        camZoom += (DEFAULT_ZOOM - camZoom) * zoomSmoothness;
-      }
-
       units.forEach((u, idx) => {
         const actor = actorsRef.current.get(u.code);
         if (!actor) return;
@@ -502,7 +486,7 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
         }
 
         actor.frameAcc += dt;
-        if (actor.frameAcc >= 1 / cameraTuningRef.current.spriteFps) {
+        if (actor.frameAcc >= 1 / SPRITE_FPS) {
           actor.frameAcc = 0;
           actor.frame = (actor.frame + 1) % 4;
         }
