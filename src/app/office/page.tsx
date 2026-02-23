@@ -1,9 +1,30 @@
 import { OfficeScene } from "@/components/hq/OfficeScene";
+import { PixelOfficeView } from "@/components/hq/PixelOfficeView";
 import { getLiveOpsSnapshot } from "@/lib/live";
 import { readTasks } from "@/lib/tasks";
 
 export default async function OfficePage() {
   const [live, tasks] = await Promise.all([getLiveOpsSnapshot(), readTasks()]);
+
+  const unitsForPixel = live.unitBoard.units.map((unit) => {
+    const task = tasks.find((t) => t.owner === unit.code || t.owner === unit.codename || t.title.toLowerCase().includes(unit.code.toLowerCase()));
+    return {
+      ...unit,
+      currentTask: task
+        ? {
+            id: task.id,
+            title: task.title,
+            description: task.nextAction,
+            tier: task.tier,
+            status: task.status,
+            owner: task.owner,
+            nextOwner: unit.nextOwner,
+            updatedAt: task.updatedAt,
+          }
+        : undefined,
+      updatedAt: unit.lastUpdate,
+    };
+  });
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
@@ -12,6 +33,17 @@ export default async function OfficePage() {
         <h1 className="mt-2 text-3xl font-semibold">Office</h1>
         <p className="mt-3 text-zinc-400">Live visual map of desks, status mix, and latest team activity.</p>
       </section>
+
+      <PixelOfficeView
+        units={unitsForPixel}
+        recentActivity={live.events.slice(0, 24).map((event) => ({
+          id: event.id,
+          summary: event.summary,
+          agent: event.agent,
+          timestamp: event.timestamp,
+        }))}
+        approvals={live.approvals}
+      />
 
       <OfficeScene
         units={live.unitBoard.units}
