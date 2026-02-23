@@ -55,10 +55,12 @@ type Actor = {
 const TILE = 16;
 const WORLD_W = 72 * TILE;
 const WORLD_H = 44 * TILE;
-const SPRITE_FPS = 7;
-const AGENT_SCALE = 1.35;
-const EMOJI_SIZE = 42;
+const SPRITE_FPS = 6;
+const AGENT_SCALE = 1.2;
+const EMOJI_SIZE = 54;
 const DEFAULT_ZOOM = 1.18;
+const WALK_SPEED_FACTOR = 0.6;
+const MAX_PARTICLES_PER_ACTOR = 2;
 const JB_OFFICE = { x: 50 * TILE, y: 17 * TILE, w: 16 * TILE, h: 9 * TILE, label: "JB's Office" };
 
 const ZONES: Record<string, { x: number; y: number; w: number; h: number; label: string }> = {
@@ -114,7 +116,7 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const bgRef = useRef<HTMLCanvasElement | null>(null);
   const actorsRef = useRef<Map<string, Actor>>(new Map());
-  const particlesRef = useRef<Array<{ x: number; y: number; vx: number; vy: number; life: number; color: string }>>([]);
+  const particlesRef = useRef<Array<{ owner: string; x: number; y: number; vx: number; vy: number; life: number; color: string }>>([]);
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [debug, setDebug] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
@@ -382,12 +384,12 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
         } else if (u.status === "Idle") {
           actor.idleActivity = IDLE_ACTIVITIES[idx % IDLE_ACTIVITIES.length];
           const idleZone = IDLE_ZONES[actor.idleActivity];
-          const loop = Math.floor(now / 1500) % 4;
-          tx = idleZone.x + 12 + ((idx + loop) % 4) * 10;
-          ty = idleZone.y + idleZone.h / 2 + ((idx + loop) % 3) * 5 - 8;
+          const loop = Math.floor(now / 4200) % 4;
+          tx = idleZone.x + 14 + ((idx + loop) % 4) * 9;
+          ty = idleZone.y + idleZone.h / 2 + ((idx + loop) % 3) * 4 - 7;
         } else if (u.status === "Working") {
-          const sway = (Math.floor(now / 700) + idx) % 3;
-          tx = zone.x + 12 + (idx % 3) * 16;
+          const sway = (Math.floor(now / 1800) + idx) % 3;
+          tx = zone.x + 12 + (idx % 3) * 15;
           ty = zone.y + zone.h - 15 + sway;
         } else if (u.status === "Blocked") {
           tx = JB_OFFICE.x - 16 - (idx % 3) * 9;
@@ -400,20 +402,23 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
         const dx = actor.tx - actor.x;
         const dy = actor.ty - actor.y;
         const dist = Math.hypot(dx, dy);
-        const speed = u.status === "Working" ? 56 : 42;
+        const speedBase = u.status === "Working" ? 56 : 42;
+        const speed = speedBase * WALK_SPEED_FACTOR;
 
         if (dist > 1) {
           actor.vx = (dx / dist) * speed;
           actor.vy = (dy / dist) * speed;
           actor.x += actor.vx * dt;
           actor.y += actor.vy * dt;
-          actor.trail.push({ x: actor.x, y: actor.y, life: 0.3 });
-          if (actor.trail.length > 8) actor.trail.shift();
+          if (u.status === "Working" && Math.random() < 0.45) {
+            actor.trail.push({ x: actor.x, y: actor.y, life: 0.2 });
+            if (actor.trail.length > 3) actor.trail.shift();
+          }
         } else {
-          actor.x += (actor.tx - actor.x) * 0.25;
-          actor.y += (actor.ty - actor.y) * 0.25;
-          actor.vx *= 0.65;
-          actor.vy *= 0.65;
+          actor.x += (actor.tx - actor.x) * 0.18;
+          actor.y += (actor.ty - actor.y) * 0.18;
+          actor.vx *= 0.72;
+          actor.vy *= 0.72;
         }
 
         actor.frameAcc += dt;
@@ -427,15 +432,19 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
         });
         actor.trail = actor.trail.filter((t) => t.life > 0);
 
-        if (u.status === "Working" && Math.random() < 0.11) {
-          particlesRef.current.push({
-            x: Math.floor(actor.x + (Math.random() * 8 - 4)),
-            y: Math.floor(actor.y - 8 + (Math.random() * 5 - 2)),
-            vx: (Math.random() - 0.5) * 18,
-            vy: -8 - Math.random() * 14,
-            life: 0.5,
-            color: "#f59e0b",
-          });
+        if (u.status === "Working") {
+          const actorParticleCount = particlesRef.current.filter((p) => p.owner === u.code).length;
+          if (actorParticleCount < MAX_PARTICLES_PER_ACTOR && Math.random() < 0.04) {
+            particlesRef.current.push({
+              owner: u.code,
+              x: Math.floor(actor.x + (Math.random() * 6 - 3)),
+              y: Math.floor(actor.y - 7 + (Math.random() * 4 - 2)),
+              vx: (Math.random() - 0.5) * 10,
+              vy: -5 - Math.random() * 8,
+              life: 0.35,
+              color: "#f59e0b",
+            });
+          }
         }
       });
 
@@ -456,15 +465,15 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
 
       if (bgRef.current) ctx.drawImage(bgRef.current, 0, 0);
 
-      const pulse = (Math.sin(now / 1000) + 1) * 0.5;
+      const pulse = (Math.sin(now / 1700) + 1) * 0.5;
       Object.entries(ZONES).forEach(([code, z]) => {
-        ctx.fillStyle = code === "GOV-1" ? `rgba(217,119,6,${0.1 + pulse * 0.08})` : `rgba(245,158,11,${0.06 + pulse * 0.05})`;
+        ctx.fillStyle = code === "GOV-1" ? `rgba(217,119,6,${0.08 + pulse * 0.04})` : `rgba(245,158,11,${0.04 + pulse * 0.025})`;
         ctx.fillRect(Math.floor(z.x + 2), Math.floor(z.y + z.h - 18), Math.floor(z.w - 4), 14);
       });
-      ctx.fillStyle = `rgba(251,146,60,${0.14 + pulse * 0.12})`;
+      ctx.fillStyle = `rgba(251,146,60,${0.09 + pulse * 0.06})`;
       ctx.fillRect(JB_OFFICE.x - 20, JB_OFFICE.y + 3, JB_OFFICE.w + 24, JB_OFFICE.h - 6);
       Object.values(IDLE_ZONES).forEach((z) => {
-        ctx.fillStyle = `rgba(56,189,248,${0.06 + pulse * 0.05})`;
+        ctx.fillStyle = `rgba(56,189,248,${0.035 + pulse * 0.02})`;
         ctx.fillRect(Math.floor(z.x + 2), Math.floor(z.y + 2), Math.floor(z.w - 4), Math.floor(z.h - 4));
       });
 
@@ -473,8 +482,8 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
         if (!actor) return;
 
         actor.trail.forEach((t) => {
-          ctx.fillStyle = `rgba(251,191,36,${Math.max(0, t.life * 1.4)})`;
-          ctx.fillRect(Math.floor(t.x), Math.floor(t.y), 2, 2);
+          ctx.fillStyle = `rgba(251,191,36,${Math.max(0, t.life * 0.8)})`;
+          ctx.fillRect(Math.floor(t.x), Math.floor(t.y), 1, 1);
         });
 
         const px = Math.floor(actor.x);
@@ -483,21 +492,31 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
         const q = (n: number) => Math.round(n * AGENT_SCALE);
         const isBlocked = u.status === "Blocked";
 
-        // Emoji-first actor marker with status animation states
-        const breathe = u.status === "Idle" ? 1 + Math.sin(now / 450 + px) * 0.08 : 1;
-        const bounce = u.status === "Working" ? Math.abs(Math.sin(now / 220 + px)) * 10 : 0;
-        const pulse = u.status === "Waiting approval" ? 1 + Math.sin(now / 300 + px) * 0.14 : 1;
-        const shakeX = isBlocked ? Math.sin(now / 60 + px) * 2.2 : 0;
+        // Emoji-first actor marker with gentle, distinct status motion.
+        const breathe = u.status === "Idle" ? 1 + Math.sin(now / 750 + px) * 0.04 : 1;
+        const bounce = u.status === "Working" ? Math.abs(Math.sin(now / 420 + px)) * 4 : 0;
+        const pulse = u.status === "Waiting approval" ? 1 + Math.sin(now / 700 + px) * 0.06 : 1;
+        const assistNudgeY = u.status === "Needs JB" ? Math.sin(now / 620 + px) * 1.6 : 0;
+        const shakeX = isBlocked ? Math.sin(now / 180 + px) * 0.9 : 0;
         const emojiScale = (EMOJI_SIZE / 16) * breathe * pulse;
-        const sy = Math.floor(py - bounce);
+        const sy = Math.floor(py - bounce + assistNudgeY);
 
-        ctx.fillStyle = "rgba(2,6,23,0.55)";
-        ctx.fillRect(px - q(10), sy + q(8), q(20), q(4));
+        ctx.fillStyle = "rgba(2,6,23,0.4)";
+        ctx.fillRect(px - q(10), sy + q(8), q(20), q(3));
 
-        // Tier ring halo keeps routing identity while emoji is primary actor
-        ctx.strokeStyle = tierColor(u.tier);
-        ctx.lineWidth = 2;
-        ctx.strokeRect(px - q(11), sy - q(14), q(22), q(22));
+        // Subtle tier ring + status badge that supports the emoji (doesn't compete with it).
+        ctx.strokeStyle = `${tierColor(u.tier)}88`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(px, sy - q(3), q(10), 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = statusColor(u.status);
+        ctx.globalAlpha = 0.85;
+        ctx.beginPath();
+        ctx.arc(px + q(8), sy - q(12), q(2.4), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
 
         ctx.save();
         ctx.translate(px + shakeX, sy - q(3));
@@ -507,22 +526,6 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
         ctx.font = "16px sans-serif";
         ctx.fillText(u.icon, 0, 0);
         ctx.restore();
-
-        const statusBubble = u.status === "Needs JB" ? "!" : u.status === "Waiting approval" ? "…" : u.status === "Blocked" ? "x" : u.status === "Working" ? "*" : "-";
-        ctx.fillStyle = "#111827";
-        ctx.fillRect(px - q(8), sy - q(30), q(16), q(11));
-        ctx.strokeStyle = statusColor(u.status);
-        ctx.strokeRect(px - q(8), sy - q(30), q(16), q(11));
-        ctx.fillStyle = "#e5e7eb";
-        ctx.font = `${q(7)}px monospace`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(statusBubble, px, sy - q(24));
-
-        if (u.status === "Needs JB" || u.status === "Waiting approval" || u.status === "Blocked") {
-          ctx.fillStyle = u.status === "Blocked" ? "#ef4444" : u.status === "Needs JB" ? "#facc15" : "#fb923c";
-          ctx.fillRect(px - q(10), sy + q(11), q(20), q(2));
-        }
 
         ctx.textAlign = "start";
         ctx.textBaseline = "alphabetic";
