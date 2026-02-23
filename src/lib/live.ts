@@ -88,15 +88,27 @@ async function ghJson<T>(args: string[]): Promise<{ data: T | null; error?: stri
   }
 }
 
-function buildUnitBoard(wrenchChips: { reason: string; lane: string }[], hasTier1Backlog: boolean) {
-  const statusOverrides: Record<string, "Idle" | "Working" | "Blocked" | "Needs JB" | "Waiting approval"> = {
-    "PROD-1": "Working",
-    "OPS-1": "Working",
-    "ARCH-1": "Working",
-    "ENG-1": "Working",
+function computeUnitStatusFromTasks(
+  unitCode: string,
+  unitCodename: string,
+  tasks: Array<{ owner: string; status: "inbox" | "planned" | "doing" | "blocked" | "review" | "done" }>,
+): "Idle" | "Working" | "Blocked" | "Needs JB" | "Waiting approval" {
+  const relevant = tasks.filter(
+    (t) => t.owner === unitCode || t.owner.toLowerCase() === unitCodename.toLowerCase(),
+  );
+  if (relevant.some((t) => t.status === "blocked")) return "Blocked";
+  if (relevant.some((t) => t.status === "doing" || t.status === "review")) return "Working";
+  if (relevant.some((t) => t.status === "planned" || t.status === "inbox")) return "Waiting approval";
+  return "Idle";
+}
+
+function buildUnitBoard(
+  wrenchChips: { reason: string; lane: string }[],
+  hasTier1Backlog: boolean,
+  tasks: Array<{ owner: string; status: "inbox" | "planned" | "doing" | "blocked" | "review" | "done" }>,
+) {
+  const defaultStatusOverrides: Record<string, "Idle" | "Working" | "Blocked" | "Needs JB" | "Waiting approval"> = {
     "GOV-1": hasTier1Backlog ? "Working" : "Idle",
-    "REV-1": "Idle",
-    "GTM-1": "Idle",
     "CONTRA-1": wrenchChips.length ? "Working" : "Idle",
   };
 
@@ -131,7 +143,9 @@ function buildUnitBoard(wrenchChips: { reason: string; lane: string }[], hasTier
       code: unit.code,
       codename: unit.codename,
       icon: unit.icon,
-      status: statusOverrides[unit.code] ?? "Idle",
+      status:
+        defaultStatusOverrides[unit.code] ??
+        computeUnitStatusFromTasks(unit.code, unit.codename, tasks),
       objective: objectiveOverrides[unit.code] ?? UNIT_REGISTRY[unit.code].mission,
       tier: unit.tier,
       lastUpdate: new Date().toISOString(),
@@ -186,7 +200,7 @@ async function generateLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
 
   const githubError = issueRes.error ?? prRes.error;
   const prReadiness = scorePrReadiness(prRes.data ?? []);
-  const units = buildUnitBoard(wrenchChips, hasTier1Backlog);
+  const units = buildUnitBoard(wrenchChips, hasTier1Backlog, tasks);
 
   return {
     github: {
