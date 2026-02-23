@@ -1,5 +1,5 @@
 {
-  "last_published_at": "2026-02-23T15:49:22.657Z",
+  "last_published_at": "2026-02-23T22:30:54.458Z",
   "office": {
     "units": [
       {
@@ -21,17 +21,17 @@
       {
         "code": "GOV-1",
         "codename": "Gatekeeper",
-        "status": "Waiting approval",
+        "status": "Idle",
         "tier": 1,
         "objective": "Enforce approvals",
-        "health": "yellow"
+        "health": "green"
       }
     ],
     "health_states": {
       "overall": "green",
       "tier1_open": 5,
       "blocked_tasks": 0,
-      "pending_approvals": 2
+      "pending_approvals": 0
     }
   },
   "tasks": {
@@ -62,51 +62,39 @@
   },
   "approvals": {
     "counts": {
-      "pending": 2,
-      "approved": 0,
+      "pending": 0,
+      "approved": 2,
       "rejected": 0,
       "total": 2
     },
-    "pending": [
-      {
-        "id": "appr-001",
-        "item": "Deploy production config change",
-        "level": "High",
-        "created_at": "2026-02-18T04:15:00.000Z"
-      },
-      {
-        "id": "appr-002",
-        "item": "Send outbound stakeholder update",
-        "level": "High",
-        "created_at": "2026-02-18T04:16:00.000Z"
-      }
-    ]
+    "pending": []
   },
   "events": {
     "recent": [
       {
-        "id": "evt-001",
-        "agent": "Operator",
-        "pipeline": "D",
-        "type": "decision",
-        "summary": "Activated 3-day sprint horizon and queued execution order A → D → B → C",
-        "timestamp": "2026-02-17T23:25:00.000Z"
+        "type": "approval_decided",
+        "summary": "PENDING → APPROVED: Deploy production config change",
+        "timestamp": "2026-02-23T21:53:17.266Z"
       },
       {
-        "id": "evt-002",
-        "agent": "Bug Engineer",
-        "pipeline": "A",
+        "type": "approval_decided",
+        "summary": "PENDING → APPROVED: Send outbound stakeholder update",
+        "timestamp": "2026-02-23T21:53:12.460Z"
+      },
+      {
+        "type": "integration",
+        "summary": "Migrated morning brief delivery from iMessage to Telegram",
+        "timestamp": "2026-02-18T01:59:00.000Z"
+      },
+      {
         "type": "delivery",
         "summary": "Initialized labels and seeded foundational issues #11, #12, #13",
         "timestamp": "2026-02-17T23:29:00.000Z"
       },
       {
-        "id": "evt-003",
-        "agent": "Ops",
-        "pipeline": "D",
-        "type": "integration",
-        "summary": "Migrated morning brief delivery from iMessage to Telegram",
-        "timestamp": "2026-02-18T01:59:00.000Z"
+        "type": "decision",
+        "summary": "Activated 3-day sprint horizon and queued execution order A → D → B → C",
+        "timestamp": "2026-02-17T23:25:00.000Z"
       }
     ]
   }
