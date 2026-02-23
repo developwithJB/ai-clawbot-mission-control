@@ -1,7 +1,113 @@
 {
-  "last_published_at": "1970-01-01T00:00:00.000Z",
-  "office": { "units": [], "health_states": { "overall": "red", "tier1_open": 0, "blocked_tasks": 0, "pending_approvals": 0 } },
-  "tasks": { "counts": { "total": 0 }, "by_tier": {}, "sample_titles": [] },
-  "approvals": { "counts": { "total": 0 }, "pending": [] },
-  "events": { "recent": [] }
+  "last_published_at": "2026-02-23T15:49:22.657Z",
+  "office": {
+    "units": [
+      {
+        "code": "PROD-1",
+        "codename": "Compass",
+        "status": "Working",
+        "tier": 1,
+        "objective": "Protect Tier 1 roadmap",
+        "health": "green"
+      },
+      {
+        "code": "OPS-1",
+        "codename": "Flow",
+        "status": "Working",
+        "tier": 1,
+        "objective": "Move tasks through lanes",
+        "health": "green"
+      },
+      {
+        "code": "GOV-1",
+        "codename": "Gatekeeper",
+        "status": "Waiting approval",
+        "tier": 1,
+        "objective": "Enforce approvals",
+        "health": "yellow"
+      }
+    ],
+    "health_states": {
+      "overall": "green",
+      "tier1_open": 5,
+      "blocked_tasks": 0,
+      "pending_approvals": 2
+    }
+  },
+  "tasks": {
+    "counts": {
+      "inbox": 0,
+      "planned": 3,
+      "doing": 6,
+      "blocked": 0,
+      "review": 0,
+      "done": 1,
+      "total": 10
+    },
+    "by_tier": {
+      "Tier 1": 6,
+      "Tier 2": 4,
+      "Tier 3": 0
+    },
+    "sample_titles": [
+      "Red-team Spine approval: top 5 failure modes + mitigation controls",
+      "Fix Mission Control build blocker (node:sqlite type/runtime compatibility)",
+      "Launch FIN-1 capital experiment with $3,100 allocation and weekly reporting cadence",
+      "Clear high-priority approvals queue (appr-001/appr-002) with decision-ready context",
+      "Approve ARCH-1 (Spine) with conditions and log governance decision",
+      "Draft 3 outbound update variants for Mission Control progress (internal, stakeholder, public-safe)",
+      "Publish 2026-02-19 Mission Control sprint release notes",
+      "Add missed-run and retry anomaly indicators to Mission Calendar"
+    ]
+  },
+  "approvals": {
+    "counts": {
+      "pending": 2,
+      "approved": 0,
+      "rejected": 0,
+      "total": 2
+    },
+    "pending": [
+      {
+        "id": "appr-001",
+        "item": "Deploy production config change",
+        "level": "High",
+        "created_at": "2026-02-18T04:15:00.000Z"
+      },
+      {
+        "id": "appr-002",
+        "item": "Send outbound stakeholder update",
+        "level": "High",
+        "created_at": "2026-02-18T04:16:00.000Z"
+      }
+    ]
+  },
+  "events": {
+    "recent": [
+      {
+        "id": "evt-001",
+        "agent": "Operator",
+        "pipeline": "D",
+        "type": "decision",
+        "summary": "Activated 3-day sprint horizon and queued execution order A → D → B → C",
+        "timestamp": "2026-02-17T23:25:00.000Z"
+      },
+      {
+        "id": "evt-002",
+        "agent": "Bug Engineer",
+        "pipeline": "A",
+        "type": "delivery",
+        "summary": "Initialized labels and seeded foundational issues #11, #12, #13",
+        "timestamp": "2026-02-17T23:29:00.000Z"
+      },
+      {
+        "id": "evt-003",
+        "agent": "Ops",
+        "pipeline": "D",
+        "type": "integration",
+        "summary": "Migrated morning brief delivery from iMessage to Telegram",
+        "timestamp": "2026-02-18T01:59:00.000Z"
+      }
+    ]
+  }
 }
