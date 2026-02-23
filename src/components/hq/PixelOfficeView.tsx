@@ -57,7 +57,7 @@ const WORLD_W = 72 * TILE;
 const WORLD_H = 44 * TILE;
 const SPRITE_FPS = 6;
 const AGENT_SCALE = 1.2;
-const EMOJI_BASE_FONT_PX = 16;
+const EMOJI_BASE_FONT_PX = 14;
 const EMOJI_OVERVIEW_MULTIPLIER = 5;
 const DEFAULT_ZOOM = 1.18;
 const WALK_SPEED_FACTOR = 0.6;
@@ -139,42 +139,57 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
     g.fillStyle = "#0b1220";
     g.fillRect(0, 0, WORLD_W, WORLD_H);
 
-    // Shared office interior floor: carpet tiles + plank accents + polished walk strips (no lane/road markings).
-    for (let y = 0; y < WORLD_H; y += TILE) {
-      for (let x = 0; x < WORLD_W; x += TILE) {
-        const row = Math.floor(y / TILE);
-        const col = Math.floor(x / TILE);
+    // Shared office interior floor: modern materials with broad surfaces (avoid blocky checker feel).
+    g.fillStyle = "#edf2f7";
+    g.fillRect(2 * TILE, 2 * TILE, 68 * TILE, 40 * TILE);
 
-        // Default: cool modern carpet tile pattern with subtle checker variation.
-        const carpetEven = (row + col) % 2 === 0;
-        let tone = carpetEven ? "#2b3544" : "#313d4d";
+    // Main cool-gray office tile zones (large panels, subtle seams)
+    g.fillStyle = "#dbe2ea";
+    g.fillRect(4 * TILE, 5 * TILE, 63 * TILE, 16 * TILE);
+    g.fillStyle = "#d3dbe5";
+    g.fillRect(4 * TILE, 21 * TILE, 63 * TILE, 20 * TILE);
 
-        // Executive/plaza bands: warm plank texture blocks.
-        const isPlankBand = (y >= 5 * TILE && y < 14 * TILE && x >= 45 * TILE && x < 67 * TILE)
-          || (y >= 25 * TILE && y < 39 * TILE && x >= 52 * TILE && x < 68 * TILE);
+    // Soft seam lines every 2 tiles for interior realism without checker blocks
+    g.strokeStyle = "rgba(100,116,139,0.18)";
+    g.lineWidth = 1;
+    for (let y = 5 * TILE; y <= 41 * TILE; y += 2 * TILE) {
+      g.beginPath();
+      g.moveTo(4 * TILE, y);
+      g.lineTo(67 * TILE, y);
+      g.stroke();
+    }
+    for (let x = 4 * TILE; x <= 67 * TILE; x += 3 * TILE) {
+      g.beginPath();
+      g.moveTo(x, 5 * TILE);
+      g.lineTo(x, 41 * TILE);
+      g.stroke();
+    }
 
-        // Main circulation as interior polished floor (still office material, not roads).
-        const isPolishedInterior = (y >= 14 * TILE && y < 19 * TILE && x >= 5 * TILE && x < 67 * TILE)
-          || (x >= 34 * TILE && x < 38 * TILE && y >= 6 * TILE && y < 39 * TILE);
-
-        if (isPlankBand) {
-          const plankShade = row % 3 === 0 ? "#7a6753" : row % 3 === 1 ? "#846f59" : "#907a63";
-          tone = plankShade;
-        } else if (isPolishedInterior) {
-          const polish = (row + col * 2) % 4;
-          tone = polish <= 1 ? "#5a6776" : "#667487";
-        }
-
-        g.fillStyle = tone;
-        g.fillRect(x, y, TILE, TILE);
-
-        // Fine material seams to keep an interior tile/plank feel.
-        g.fillStyle = isPlankBand ? "rgba(15,23,42,0.22)" : "rgba(148,163,184,0.11)";
-        g.fillRect(x, y, TILE, 1);
-        g.fillRect(x, y, 1, TILE);
+    // Warm wood lounge/meeting accents
+    g.fillStyle = "#caa37a";
+    g.fillRect(50 * TILE, 5 * TILE, 16 * TILE, 9 * TILE);
+    g.fillRect(52 * TILE, 25 * TILE, 15 * TILE, 14 * TILE);
+    g.strokeStyle = "rgba(120,53,15,0.28)";
+    for (let y = 5 * TILE; y <= 39 * TILE; y += 6) {
+      if (y < 14 * TILE || y > 25 * TILE) {
+        g.beginPath();
+        g.moveTo(50 * TILE, y);
+        g.lineTo(67 * TILE, y);
+        g.stroke();
       }
     }
 
+    // Circulation paths (polished concrete look)
+    g.fillStyle = "#c7d2df";
+    g.fillRect(5 * TILE, 14 * TILE, 62 * TILE, 5 * TILE);
+    g.fillRect(34 * TILE, 6 * TILE, 4 * TILE, 33 * TILE);
+
+    // Area rugs to break geometry and feel like a real office
+    g.fillStyle = "rgba(59,130,246,0.12)";
+    g.fillRect(8 * TILE, 28 * TILE, 12 * TILE, 11 * TILE);
+    g.fillRect(23 * TILE, 28 * TILE, 14 * TILE, 10 * TILE);
+    g.fillRect(40 * TILE, 28 * TILE, 10 * TILE, 10 * TILE);
+    g.fillRect(53 * TILE, 27 * TILE, 14 * TILE, 12 * TILE);
     // Shared office shell and border
     g.fillStyle = "#111827";
     g.fillRect(2 * TILE, 2 * TILE, 68 * TILE, 3 * TILE);
