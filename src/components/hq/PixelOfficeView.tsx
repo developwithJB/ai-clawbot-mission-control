@@ -431,19 +431,20 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
 
+      const zoomSmoothness = cameraTuningRef.current.zoomSmoothness;
       const selected = units.find((u) => u.code === selectedCode);
       if (selected) {
         const isJbQueue = selected.status === "Blocked" || selected.status === "Needs JB" || selected.status === "Waiting approval";
         const z = ZONES[selected.code] ?? ZONES["OPS-1"];
         const focusX = isJbQueue ? JB_OFFICE.x + JB_OFFICE.w / 2 : z.x + z.w / 2;
         const focusY = isJbQueue ? JB_OFFICE.y + JB_OFFICE.h / 2 : z.y + z.h / 2;
-        camX += (focusX - camX) * 0.08;
-        camY += (focusY - camY) * 0.08;
-        camZoom += (1.65 - camZoom) * 0.08;
+        camX += (focusX - camX) * zoomSmoothness;
+        camY += (focusY - camY) * zoomSmoothness;
+        camZoom += (1.65 - camZoom) * zoomSmoothness;
       } else {
-        camX += (WORLD_W / 2 - camX) * 0.08;
-        camY += (WORLD_H / 2 - camY) * 0.08;
-        camZoom += (DEFAULT_ZOOM - camZoom) * 0.08;
+        camX += (WORLD_W / 2 - camX) * zoomSmoothness;
+        camY += (WORLD_H / 2 - camY) * zoomSmoothness;
+        camZoom += (DEFAULT_ZOOM - camZoom) * zoomSmoothness;
       }
 
       units.forEach((u, idx) => {
@@ -501,7 +502,7 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
         }
 
         actor.frameAcc += dt;
-        if (actor.frameAcc >= 1 / SPRITE_FPS) {
+        if (actor.frameAcc >= 1 / cameraTuningRef.current.spriteFps) {
           actor.frameAcc = 0;
           actor.frame = (actor.frame + 1) % 4;
         }
@@ -526,6 +527,19 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
           }
         }
       });
+
+      if (selectedCode) {
+        const selectedActor = actorsRef.current.get(selectedCode);
+        if (selectedActor) {
+          camX += (selectedActor.x - camX) * 0.1;
+          camY += (selectedActor.y - camY) * 0.1;
+        }
+        camZoom += (1.65 - camZoom) * 0.08;
+      } else {
+        camX += (WORLD_W / 2 - camX) * 0.08;
+        camY += (WORLD_H / 2 - camY) * 0.08;
+        camZoom += (DEFAULT_ZOOM - camZoom) * 0.08;
+      }
 
       particlesRef.current.forEach((p) => {
         p.x += p.vx * dt;
@@ -584,11 +598,20 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
         ctx.fillRect(px - q(10), sy + q(8), q(20), q(3));
 
         // Subtle tier ring + status badge that supports the emoji (doesn't compete with it).
+        const isSelected = selectedCode === u.code;
         ctx.strokeStyle = `${tierColor(u.tier)}88`;
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.arc(px, sy - q(3), q(10), 0, Math.PI * 2);
         ctx.stroke();
+
+        if (isSelected) {
+          ctx.strokeStyle = "#f8fafc";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(px, sy - q(3), q(13), 0, Math.PI * 2);
+          ctx.stroke();
+        }
 
         ctx.fillStyle = statusColor(u.status);
         ctx.globalAlpha = 0.85;
@@ -672,7 +695,7 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
       <div className="mb-3 flex items-center justify-between gap-2">
         <h2 className="text-lg font-semibold">Operations Floor (Pixel View)</h2>
         <div className="flex items-center gap-2 text-xs text-zinc-400">
-          <span>Overview {selectedUnit ? "- Focus active" : "- Full floor"}</span>
+          <span>{selectedUnit ? "Focus mode active · Esc to exit" : "Click an employee to focus · Full floor"}</span>
           <button
             type="button"
             onClick={() => {
