@@ -2,7 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
 <key>Label</key><string>com.missioncontrol.approvals-poll</string>
-<key>ProgramArguments</key><array><string>/usr/bin/env</string><string>node</string><string>--experimental-strip-types</string><string>/Users/REPLACE_ME/.openclaw/workspace/repos/ai-clawbot-mission-control/scripts/poll_approvals.ts</string></array>
+<key>ProgramArguments</key><array><string>/opt/homebrew/bin/node</string><string>--experimental-strip-types</string><string>/Users/REPLACE_ME/.openclaw/workspace/repos/ai-clawbot-mission-control/scripts/poll_approvals.ts</string></array>
 <key>WorkingDirectory</key><string>/Users/REPLACE_ME/.openclaw/workspace/repos/ai-clawbot-mission-control</string>
 <key>StartInterval</key><integer>60</integer>
 <key>RunAtLoad</key><true/>

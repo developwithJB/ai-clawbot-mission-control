@@ -11,7 +11,7 @@ function roleFromRequest(req: NextRequest): string {
   ).toLowerCase();
 }
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   if (req.method !== "PATCH") return NextResponse.next();
 
   if (!req.nextUrl.pathname.startsWith("/api/approvals/")) {

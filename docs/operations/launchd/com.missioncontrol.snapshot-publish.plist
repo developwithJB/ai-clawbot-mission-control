@@ -6,7 +6,7 @@
 <key>WorkingDirectory</key><string>/Users/REPLACE_ME/.openclaw/workspace/repos/ai-clawbot-mission-control</string>
 <key>StartInterval</key><integer>300</integer>
 <key>RunAtLoad</key><true/>
-<key>EnvironmentVariables</key><dict><key>SAFE_MODE</key><string>true</string><key>SNAPSHOT_REPO</key><string>developwithJB/ai-clawbot-mission-control</string><key>SNAPSHOT_BRANCH</key><string>main</string><key>SNAPSHOT_PAT</key><string>REPLACE_WITH_PAT</string></dict>
+<key>EnvironmentVariables</key><dict><key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string><key>SAFE_MODE</key><string>true</string><key>SNAPSHOT_REPO</key><string>developwithJB/ai-clawbot-mission-control</string><key>SNAPSHOT_BRANCH</key><string>main</string><key>SNAPSHOT_PAT</key><string>REPLACE_WITH_PAT</string></dict>
 <key>StandardOutPath</key><string>/tmp/mission-control-snapshot.out.log</string>
 <key>StandardErrorPath</key><string>/tmp/mission-control-snapshot.err.log</string>
 </dict></plist>

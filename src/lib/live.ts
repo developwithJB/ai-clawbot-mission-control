@@ -88,13 +88,13 @@ async function ghJson<T>(args: string[]): Promise<{ data: T | null; error?: stri
   }
 }
 
-function buildUnitBoard(wrenchChips: { reason: string; lane: string }[]) {
+function buildUnitBoard(wrenchChips: { reason: string; lane: string }[], hasTier1Backlog: boolean) {
   const statusOverrides: Record<string, "Idle" | "Working" | "Blocked" | "Needs JB" | "Waiting approval"> = {
     "PROD-1": "Working",
     "OPS-1": "Working",
     "ARCH-1": "Working",
     "ENG-1": "Working",
-    "GOV-1": "Idle",
+    "GOV-1": hasTier1Backlog ? "Working" : "Idle",
     "REV-1": "Idle",
     "GTM-1": "Idle",
     "CONTRA-1": wrenchChips.length ? "Working" : "Idle",
@@ -186,7 +186,7 @@ async function generateLiveOpsSnapshot(): Promise<LiveOpsSnapshot> {
 
   const githubError = issueRes.error ?? prRes.error;
   const prReadiness = scorePrReadiness(prRes.data ?? []);
-  const units = buildUnitBoard(wrenchChips);
+  const units = buildUnitBoard(wrenchChips, hasTier1Backlog);
 
   return {
     github: {
