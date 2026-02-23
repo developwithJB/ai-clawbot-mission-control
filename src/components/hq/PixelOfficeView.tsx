@@ -57,7 +57,8 @@ const WORLD_W = 72 * TILE;
 const WORLD_H = 44 * TILE;
 const SPRITE_FPS = 6;
 const AGENT_SCALE = 1.2;
-const EMOJI_SIZE = 54;
+const EMOJI_BASE_FONT_PX = 16;
+const EMOJI_OVERVIEW_MULTIPLIER = 5;
 const DEFAULT_ZOOM = 1.18;
 const WALK_SPEED_FACTOR = 0.6;
 const MAX_PARTICLES_PER_ACTOR = 2;
@@ -138,17 +139,39 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
     g.fillStyle = "#0b1220";
     g.fillRect(0, 0, WORLD_W, WORLD_H);
 
-    // Cool-neutral shared open office floor
+    // Shared office interior floor: carpet tiles + plank accents + polished walk strips (no lane/road markings).
     for (let y = 0; y < WORLD_H; y += TILE) {
       for (let x = 0; x < WORLD_W; x += TILE) {
         const row = Math.floor(y / TILE);
         const col = Math.floor(x / TILE);
-        const grain = (row * 2 + col) % 6;
-        const tone = grain <= 1 ? "#1f2937" : grain <= 3 ? "#243142" : "#283548";
+
+        // Default: cool modern carpet tile pattern with subtle checker variation.
+        const carpetEven = (row + col) % 2 === 0;
+        let tone = carpetEven ? "#2b3544" : "#313d4d";
+
+        // Executive/plaza bands: warm plank texture blocks.
+        const isPlankBand = (y >= 5 * TILE && y < 14 * TILE && x >= 45 * TILE && x < 67 * TILE)
+          || (y >= 25 * TILE && y < 39 * TILE && x >= 52 * TILE && x < 68 * TILE);
+
+        // Main circulation as interior polished floor (still office material, not roads).
+        const isPolishedInterior = (y >= 14 * TILE && y < 19 * TILE && x >= 5 * TILE && x < 67 * TILE)
+          || (x >= 34 * TILE && x < 38 * TILE && y >= 6 * TILE && y < 39 * TILE);
+
+        if (isPlankBand) {
+          const plankShade = row % 3 === 0 ? "#7a6753" : row % 3 === 1 ? "#846f59" : "#907a63";
+          tone = plankShade;
+        } else if (isPolishedInterior) {
+          const polish = (row + col * 2) % 4;
+          tone = polish <= 1 ? "#5a6776" : "#667487";
+        }
+
         g.fillStyle = tone;
         g.fillRect(x, y, TILE, TILE);
-        g.fillStyle = "rgba(148,163,184,0.1)";
+
+        // Fine material seams to keep an interior tile/plank feel.
+        g.fillStyle = isPlankBand ? "rgba(15,23,42,0.22)" : "rgba(148,163,184,0.11)";
         g.fillRect(x, y, TILE, 1);
+        g.fillRect(x, y, 1, TILE);
       }
     }
 
@@ -162,13 +185,12 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
     g.lineWidth = 2;
     g.strokeRect(2 * TILE, 2 * TILE, 68 * TILE, 40 * TILE);
 
-    // Open office circulation aisles
-    g.fillStyle = "#334155";
-    g.fillRect(5 * TILE, 14 * TILE, 62 * TILE, 4 * TILE);
-    g.fillStyle = "#94a3b8";
-    for (let x = 6 * TILE; x < 66 * TILE; x += 3 * TILE) g.fillRect(x, 16 * TILE, TILE, 1);
-    g.fillStyle = "#3b4b60";
-    g.fillRect(35 * TILE, 6 * TILE, 2 * TILE, 30 * TILE);
+    // Subtle interior transition strips (no lane lines).
+    g.fillStyle = "rgba(226,232,240,0.08)";
+    g.fillRect(5 * TILE, 14 * TILE, 62 * TILE, 1);
+    g.fillRect(5 * TILE, 19 * TILE, 62 * TILE, 1);
+    g.fillRect(34 * TILE, 6 * TILE, 1, 33 * TILE);
+    g.fillRect(38 * TILE, 6 * TILE, 1, 33 * TILE);
 
     // City-view window strips
     for (let i = 0; i < 7; i += 1) {
@@ -498,7 +520,7 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
         const pulse = u.status === "Waiting approval" ? 1 + Math.sin(now / 700 + px) * 0.06 : 1;
         const assistNudgeY = u.status === "Needs JB" ? Math.sin(now / 620 + px) * 1.6 : 0;
         const shakeX = isBlocked ? Math.sin(now / 180 + px) * 0.9 : 0;
-        const emojiScale = (EMOJI_SIZE / 16) * breathe * pulse;
+        const emojiScale = EMOJI_OVERVIEW_MULTIPLIER * breathe * pulse;
         const sy = Math.floor(py - bounce + assistNudgeY);
 
         ctx.fillStyle = "rgba(2,6,23,0.4)";
@@ -520,10 +542,10 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
 
         ctx.save();
         ctx.translate(px + shakeX, sy - q(3));
-        ctx.scale(emojiScale / 16, emojiScale / 16);
+        ctx.scale(emojiScale, emojiScale);
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.font = "16px sans-serif";
+        ctx.font = `${EMOJI_BASE_FONT_PX}px sans-serif`;
         ctx.fillText(u.icon, 0, 0);
         ctx.restore();
 
