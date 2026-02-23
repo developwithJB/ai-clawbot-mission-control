@@ -118,52 +118,51 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
     const g = bg.getContext("2d");
     if (!g) return;
     g.imageSmoothingEnabled = false;
-    g.fillStyle = "#030712";
+    g.fillStyle = "#1a130d";
     g.fillRect(0, 0, WORLD_W, WORLD_H);
 
-    // Isometric-feel parquet floor with subtle depth bands
+    // Warm shared wood floor (single open room, no checkerboard pods)
     for (let y = 0; y < WORLD_H; y += TILE) {
       for (let x = 0; x < WORLD_W; x += TILE) {
         const row = Math.floor(y / TILE);
         const col = Math.floor(x / TILE);
-        const diag = (col - row + 80) % 4;
-        const tone = diag === 0 ? "#1f2937" : diag === 1 ? "#172030" : diag === 2 ? "#111827" : "#0b1220";
+        const grain = (row + col * 2) % 5;
+        const tone = grain === 0 ? "#3a2a1f" : grain === 1 ? "#342519" : grain === 2 ? "#402f22" : grain === 3 ? "#2f2117" : "#473426";
         g.fillStyle = tone;
         g.fillRect(x, y, TILE, TILE);
-        g.fillStyle = "rgba(148,163,184,0.06)";
+        g.fillStyle = "rgba(255,237,213,0.08)";
         g.fillRect(x, y, TILE, 1);
       }
     }
 
-    // Room shell with top and side walls to fake isometric framing
-    g.fillStyle = "#0f172a";
+    // Shared office shell
+    g.fillStyle = "#5b4331";
     g.fillRect(2 * TILE, 2 * TILE, 68 * TILE, 3 * TILE);
-    g.fillStyle = "#111827";
+    g.fillStyle = "#4a3526";
     g.fillRect(67 * TILE, 5 * TILE, 3 * TILE, 37 * TILE);
-    g.fillStyle = "#111827";
+    g.fillStyle = "#4a3526";
     g.fillRect(2 * TILE, 5 * TILE, 3 * TILE, 37 * TILE);
 
-    g.strokeStyle = "#334155";
+    g.strokeStyle = "#8b6b4f";
     g.lineWidth = 2;
     g.strokeRect(2 * TILE, 2 * TILE, 68 * TILE, 40 * TILE);
 
-    // Hall runners and central transit lane
-    g.fillStyle = "#3f2b4a";
-    g.fillRect(4 * TILE, 14 * TILE, 64 * TILE, 4 * TILE);
-    g.fillStyle = "#4c1d95";
-    for (let x = 5 * TILE; x < 66 * TILE; x += 3 * TILE) g.fillRect(x, 16 * TILE, TILE, 1);
+    // Main shared circulation rug and cross aisle
+    g.fillStyle = "#6b3f2a";
+    g.fillRect(5 * TILE, 14 * TILE, 62 * TILE, 4 * TILE);
+    g.fillStyle = "#d9a066";
+    for (let x = 6 * TILE; x < 66 * TILE; x += 3 * TILE) g.fillRect(x, 16 * TILE, TILE, 1);
+    g.fillStyle = "#7a4a2f";
+    g.fillRect(35 * TILE, 6 * TILE, 2 * TILE, 30 * TILE);
 
-    g.fillStyle = "#1e293b";
-    g.fillRect(20 * TILE, 4 * TILE, 2 * TILE, 34 * TILE);
-
-    // Windows + blinds + sill highlights
+    // Windows with warm daylight
     for (let i = 0; i < 7; i += 1) {
       const wx = (6 + i * 9) * TILE;
-      g.fillStyle = "#0ea5e9";
+      g.fillStyle = "#e6d5b0";
       g.fillRect(wx, 3 * TILE, 5 * TILE, TILE);
-      g.fillStyle = "#67e8f9";
+      g.fillStyle = "#fef3c7";
       g.fillRect(wx + 1, 3 * TILE, 3 * TILE, 1);
-      g.fillStyle = "#64748b";
+      g.fillStyle = "#8b735f";
       g.fillRect(wx, 4 * TILE, 5 * TILE, 1);
     }
 
@@ -172,37 +171,39 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
       const zh = z.h;
       const zx = z.x;
 
-      // platform / rug for each team area
-      g.fillStyle = idx % 2 === 0 ? "#0b1220" : "#111827";
-      g.fillRect(zx - 2, zy - 2, z.w + 4, zh + 4);
-      g.strokeStyle = "#334155";
-      g.strokeRect(zx - 2, zy - 2, z.w + 4, zh + 4);
-
-      // desk bank (back edge lighter, front edge darker)
-      g.fillStyle = "#64748b";
+      // Desk islands in one shared room (no boxed per-team rooms)
+      g.fillStyle = idx % 2 === 0 ? "#6a4b35" : "#5b3f2b";
       g.fillRect(zx + 4, zy + zh - 14, z.w - 8, 5);
-      g.fillStyle = "#334155";
+      g.fillStyle = "#4b3324";
       g.fillRect(zx + 4, zy + zh - 9, z.w - 8, 7);
 
-      // monitors
+      // Chairs
+      const chairs = Math.max(2, Math.floor(z.w / 24));
+      for (let i = 0; i < chairs; i += 1) {
+        const cx = zx + 7 + i * 22;
+        g.fillStyle = "#7c5a43";
+        g.fillRect(cx, zy + zh - 5, 6, 4);
+      }
+
+      // Monitors
       const stations = Math.max(2, Math.floor(z.w / 28));
       for (let i = 0; i < stations; i += 1) {
         const mx = zx + 8 + i * 24;
-        g.fillStyle = "#0f172a";
+        g.fillStyle = "#241a13";
         g.fillRect(mx, zy + zh - 20, 10, 6);
-        g.fillStyle = "#22d3ee";
+        g.fillStyle = "#f5c97a";
         g.fillRect(mx + 1, zy + zh - 19, 8, 4);
       }
 
-      // decor: potted plant + wall frame
-      g.fillStyle = "#14532d";
+      // Decor: plant + wall art
+      g.fillStyle = "#2f5d3a";
       g.fillRect(zx + z.w - 10, zy + 4, 5, 5);
-      g.fillStyle = "#22c55e";
+      g.fillStyle = "#58a46d";
       g.fillRect(zx + z.w - 11, zy + 1, 7, 4);
 
-      g.fillStyle = "#1e293b";
+      g.fillStyle = "#6d4c36";
       g.fillRect(zx + 4, zy + 3, 8, 6);
-      g.fillStyle = "#7dd3fc";
+      g.fillStyle = "#fcd9a3";
       g.fillRect(zx + 5, zy + 4, 6, 4);
     });
 
@@ -332,7 +333,7 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
             vx: (Math.random() - 0.5) * 18,
             vy: -8 - Math.random() * 14,
             life: 0.5,
-            color: "#22d3ee",
+            color: "#f59e0b",
           });
         }
       });
@@ -356,7 +357,7 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
 
       const pulse = (Math.sin(now / 1000) + 1) * 0.5;
       Object.entries(ZONES).forEach(([code, z]) => {
-        ctx.fillStyle = code === "GOV-1" ? `rgba(245,158,11,${0.06 + pulse * 0.06})` : `rgba(56,189,248,${0.03 + pulse * 0.04})`;
+        ctx.fillStyle = code === "GOV-1" ? `rgba(217,119,6,${0.08 + pulse * 0.08})` : `rgba(180,83,9,${0.025 + pulse * 0.035})`;
         ctx.fillRect(Math.floor(z.x + 2), Math.floor(z.y + 2), Math.floor(z.w - 4), Math.floor(z.h - 4));
       });
 
@@ -365,7 +366,7 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
         if (!actor) return;
 
         actor.trail.forEach((t) => {
-          ctx.fillStyle = `rgba(125,211,252,${Math.max(0, t.life * 1.4)})`;
+          ctx.fillStyle = `rgba(251,191,36,${Math.max(0, t.life * 1.4)})`;
           ctx.fillRect(Math.floor(t.x), Math.floor(t.y), 2, 2);
         });
 
@@ -406,27 +407,31 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
         if (u.status === "Working" || u.status === "Idle") {
           ctx.fillStyle = "#475569";
           ctx.fillRect(px - 6, sy - 1, 12, 2);
-          ctx.fillStyle = "#22d3ee";
+          ctx.fillStyle = "#f59e0b";
           ctx.fillRect(px - 3, sy - 2, 6, 1);
         }
 
-        // Employee identity is their associated emoji (required)
-        ctx.font = "10px sans-serif";
+        // Employee identity: large, readable emoji marker above character
+        ctx.fillStyle = "rgba(17,24,39,0.9)";
+        ctx.fillRect(px - 10, sy - 36, 20, 12);
+        ctx.strokeStyle = "#fbbf24";
+        ctx.strokeRect(px - 10, sy - 36, 20, 12);
+        ctx.font = "15px sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(u.icon, px, sy - 19);
+        ctx.fillText(u.icon, px, sy - 30);
         ctx.textAlign = "start";
         ctx.textBaseline = "alphabetic";
         ctx.globalAlpha = 1;
 
         const statusBubble = u.status === "Needs JB" ? "!" : u.status === "Waiting approval" ? "…" : u.status === "Blocked" ? "x" : u.status === "Working" ? "*" : "-";
         ctx.fillStyle = "#111827";
-        ctx.fillRect(px - 6, sy - 30, 12, 10);
+        ctx.fillRect(px - 6, sy - 48, 12, 10);
         ctx.strokeStyle = statusColor(u.status);
-        ctx.strokeRect(px - 6, sy - 30, 12, 10);
+        ctx.strokeRect(px - 6, sy - 48, 12, 10);
         ctx.fillStyle = "#e5e7eb";
         ctx.font = "8px monospace";
-        ctx.fillText(statusBubble, px - 2, sy - 22);
+        ctx.fillText(statusBubble, px - 2, sy - 40);
 
         ctx.fillStyle = "rgba(2,6,23,0.9)";
         ctx.fillRect(px - 22, sy + 5, 44, 10);
