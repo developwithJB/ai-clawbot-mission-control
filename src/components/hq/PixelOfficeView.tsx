@@ -36,6 +36,18 @@ type Props = {
   approvals: OfficeApproval[];
 };
 
+type DebugOptions = {
+  enabled: boolean;
+  grid: boolean;
+  hitboxes: boolean;
+  fps: boolean;
+};
+
+type CameraTuning = {
+  zoomSmoothness: number;
+  spriteFps: number;
+};
+
 type IdleActivity = "basketball" | "cards" | "watercooler" | "window";
 
 type Actor = {
@@ -55,7 +67,12 @@ type Actor = {
 const TILE = 16;
 const WORLD_W = 72 * TILE;
 const WORLD_H = 44 * TILE;
-const SPRITE_FPS = 6;
+const DEFAULT_SPRITE_FPS = 6;
+const MIN_SPRITE_FPS = 2;
+const MAX_SPRITE_FPS = 24;
+const MIN_ZOOM_SMOOTHNESS = 0.02;
+const MAX_ZOOM_SMOOTHNESS = 0.2;
+const DEFAULT_ZOOM_SMOOTHNESS = 0.08;
 const AGENT_SCALE = 1.2;
 const EMOJI_BASE_FONT_PX = 14;
 const EMOJI_OVERVIEW_MULTIPLIER = 4.25;
@@ -83,6 +100,8 @@ const IDLE_ZONES: Record<IdleActivity, { x: number; y: number; w: number; h: num
 };
 
 const IDLE_ACTIVITIES: IdleActivity[] = ["basketball", "cards", "watercooler", "window"];
+const DEBUG_STORAGE_KEY = "mc_pixel_debug_opts";
+const CAMERA_STORAGE_KEY = "mc_pixel_camera_tuning";
 
 function tierColor(tier: 1 | 2 | 3) {
   if (tier === 1) return "#38bdf8";
@@ -102,6 +121,21 @@ function containsToken(text: string, token: string) {
   return text.toLowerCase().includes(token.toLowerCase());
 }
 
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function compactByLife<T extends { life: number }>(items: T[]) {
+  let write = 0;
+  for (let read = 0; read < items.length; read += 1) {
+    if (items[read].life > 0) {
+      items[write] = items[read];
+      write += 1;
+    }
+  }
+  items.length = write;
+}
+
 function mapUnitEvents(unit: PixelUnit, events: OfficeEvent[]) {
   const t = `${unit.code} ${unit.codename}`.toLowerCase();
   return events.filter((e) => containsToken(`${e.agent} ${e.summary}`.toLowerCase(), unit.code.toLowerCase()) || containsToken(`${e.agent} ${e.summary}`.toLowerCase(), unit.codename.toLowerCase()) || containsToken(`${e.agent} ${e.summary}`.toLowerCase(), t)).slice(0, 5);
@@ -119,15 +153,55 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
   const actorsRef = useRef<Map<string, Actor>>(new Map());
   const particlesRef = useRef<Array<{ owner: string; x: number; y: number; vx: number; vy: number; life: number; color: string }>>([]);
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
-  const [debug, setDebug] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
+  const [debugOptions, setDebugOptions] = useState<DebugOptions>(() => {
+    if (typeof window === "undefined") return { enabled: false, grid: false, hitboxes: false, fps: false };
     const q = new URLSearchParams(window.location.search);
-    return q.get("pixelDebug") === "1" || window.localStorage.getItem("mc_pixel_debug") === "1";
+    const queryDebug = q.get("pixelDebug") === "1";
+    const raw = window.localStorage.getItem(DEBUG_STORAGE_KEY);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as Partial<DebugOptions>;
+        const enabled = Boolean(parsed.enabled || queryDebug);
+        return {
+          enabled,
+          grid: Boolean(parsed.grid ?? enabled),
+          hitboxes: Boolean(parsed.hitboxes ?? enabled),
+          fps: Boolean(parsed.fps ?? enabled),
+        };
+      } catch {}
+    }
+    return { enabled: queryDebug, grid: queryDebug, hitboxes: queryDebug, fps: queryDebug };
   });
+  const debugOptionsRef = useRef(debugOptions);
+  const [cameraTuning, setCameraTuning] = useState<CameraTuning>(() => {
+    if (typeof window === "undefined") return { zoomSmoothness: DEFAULT_ZOOM_SMOOTHNESS, spriteFps: DEFAULT_SPRITE_FPS };
+    const raw = window.localStorage.getItem(CAMERA_STORAGE_KEY);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as Partial<CameraTuning>;
+        return {
+          zoomSmoothness: clamp(Number(parsed.zoomSmoothness ?? DEFAULT_ZOOM_SMOOTHNESS), MIN_ZOOM_SMOOTHNESS, MAX_ZOOM_SMOOTHNESS),
+          spriteFps: clamp(Number(parsed.spriteFps ?? DEFAULT_SPRITE_FPS), MIN_SPRITE_FPS, MAX_SPRITE_FPS),
+        };
+      } catch {}
+    }
+    return { zoomSmoothness: DEFAULT_ZOOM_SMOOTHNESS, spriteFps: DEFAULT_SPRITE_FPS };
+  });
+  const cameraTuningRef = useRef(cameraTuning);
 
   const selectedUnit = useMemo(() => units.find((u) => u.code === selectedCode) ?? null, [units, selectedCode]);
   const selectedEvents = useMemo(() => (selectedUnit ? mapUnitEvents(selectedUnit, recentActivity) : []), [selectedUnit, recentActivity]);
   const selectedApprovals = useMemo(() => (selectedUnit ? mapUnitApprovals(selectedUnit, approvals) : []), [selectedUnit, approvals]);
+
+  useEffect(() => {
+    debugOptionsRef.current = debugOptions;
+    if (typeof window !== "undefined") window.localStorage.setItem(DEBUG_STORAGE_KEY, JSON.stringify(debugOptions));
+  }, [debugOptions]);
+
+  useEffect(() => {
+    cameraTuningRef.current = cameraTuning;
+    if (typeof window !== "undefined") window.localStorage.setItem(CAMERA_STORAGE_KEY, JSON.stringify(cameraTuning));
+  }, [cameraTuning]);
 
   useEffect(() => {
     const bg = document.createElement("canvas");
@@ -416,6 +490,9 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
     let camX = WORLD_W / 2;
     let camY = WORLD_H / 2;
     let camZoom = DEFAULT_ZOOM;
+    let fps = 60;
+    let fpsAcc = 0;
+    let fpsFrames = 0;
 
     const resize = () => {
       const rect = wrap.getBoundingClientRect();
@@ -430,20 +507,12 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
     const step = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
-
-      const selected = units.find((u) => u.code === selectedCode);
-      if (selected) {
-        const isJbQueue = selected.status === "Blocked" || selected.status === "Needs JB" || selected.status === "Waiting approval";
-        const z = ZONES[selected.code] ?? ZONES["OPS-1"];
-        const focusX = isJbQueue ? JB_OFFICE.x + JB_OFFICE.w / 2 : z.x + z.w / 2;
-        const focusY = isJbQueue ? JB_OFFICE.y + JB_OFFICE.h / 2 : z.y + z.h / 2;
-        camX += (focusX - camX) * 0.08;
-        camY += (focusY - camY) * 0.08;
-        camZoom += (1.65 - camZoom) * 0.08;
-      } else {
-        camX += (WORLD_W / 2 - camX) * 0.08;
-        camY += (WORLD_H / 2 - camY) * 0.08;
-        camZoom += (DEFAULT_ZOOM - camZoom) * 0.08;
+      fpsAcc += dt;
+      fpsFrames += 1;
+      if (fpsAcc >= 0.25) {
+        fps = fpsFrames / fpsAcc;
+        fpsAcc = 0;
+        fpsFrames = 0;
       }
 
       units.forEach((u, idx) => {
@@ -501,7 +570,7 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
         }
 
         actor.frameAcc += dt;
-        if (actor.frameAcc >= 1 / SPRITE_FPS) {
+        if (actor.frameAcc >= 1 / cameraTuningRef.current.spriteFps) {
           actor.frameAcc = 0;
           actor.frame = (actor.frame + 1) % 4;
         }
@@ -509,10 +578,13 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
         actor.trail.forEach((t) => {
           t.life -= dt;
         });
-        actor.trail = actor.trail.filter((t) => t.life > 0);
+        compactByLife(actor.trail);
 
         if (u.status === "Working") {
-          const actorParticleCount = particlesRef.current.filter((p) => p.owner === u.code).length;
+          let actorParticleCount = 0;
+          for (let i = 0; i < particlesRef.current.length; i += 1) {
+            if (particlesRef.current[i].owner === u.code) actorParticleCount += 1;
+          }
           if (actorParticleCount < MAX_PARTICLES_PER_ACTOR && Math.random() < 0.04) {
             particlesRef.current.push({
               owner: u.code,
@@ -527,12 +599,28 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
         }
       });
 
+      const zoomSmoothness = cameraTuningRef.current.zoomSmoothness;
+      const selected = units.find((u) => u.code === selectedCode);
+      if (selected) {
+        const isJbQueue = selected.status === "Blocked" || selected.status === "Needs JB" || selected.status === "Waiting approval";
+        const z = ZONES[selected.code] ?? ZONES["OPS-1"];
+        const focusX = isJbQueue ? JB_OFFICE.x + JB_OFFICE.w / 2 : z.x + z.w / 2;
+        const focusY = isJbQueue ? JB_OFFICE.y + JB_OFFICE.h / 2 : z.y + z.h / 2;
+        camX += (focusX - camX) * zoomSmoothness;
+        camY += (focusY - camY) * zoomSmoothness;
+        camZoom += (1.65 - camZoom) * zoomSmoothness;
+      } else {
+        camX += (WORLD_W / 2 - camX) * zoomSmoothness;
+        camY += (WORLD_H / 2 - camY) * zoomSmoothness;
+        camZoom += (DEFAULT_ZOOM - camZoom) * zoomSmoothness;
+      }
+
       particlesRef.current.forEach((p) => {
         p.x += p.vx * dt;
         p.y += p.vy * dt;
         p.life -= dt;
       });
-      particlesRef.current = particlesRef.current.filter((p) => p.life > 0);
+      compactByLife(particlesRef.current);
 
       ctx.imageSmoothingEnabled = false;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -584,11 +672,20 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
         ctx.fillRect(px - q(10), sy + q(8), q(20), q(3));
 
         // Subtle tier ring + status badge that supports the emoji (doesn't compete with it).
+        const isSelected = selectedCode === u.code;
         ctx.strokeStyle = `${tierColor(u.tier)}88`;
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.arc(px, sy - q(3), q(10), 0, Math.PI * 2);
         ctx.stroke();
+
+        if (isSelected) {
+          ctx.strokeStyle = "#f8fafc";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(px, sy - q(3), q(13), 0, Math.PI * 2);
+          ctx.stroke();
+        }
 
         ctx.fillStyle = statusColor(u.status);
         ctx.globalAlpha = 0.85;
@@ -622,11 +719,36 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
       });
       ctx.globalAlpha = 1;
 
-      if (debug) {
+      if (debugOptionsRef.current.enabled && debugOptionsRef.current.grid) {
         ctx.strokeStyle = "rgba(148,163,184,0.25)";
         ctx.lineWidth = 1;
         for (let x = 0; x < WORLD_W; x += TILE) ctx.strokeRect(x, 0, 1, WORLD_H);
         for (let y = 0; y < WORLD_H; y += TILE) ctx.strokeRect(0, y, WORLD_W, 1);
+      }
+
+      if (debugOptionsRef.current.enabled && debugOptionsRef.current.hitboxes) {
+        ctx.strokeStyle = "rgba(251,191,36,0.75)";
+        ctx.lineWidth = 1;
+        units.forEach((u) => {
+          const a = actorsRef.current.get(u.code);
+          if (!a) return;
+          const px = Math.floor(a.x);
+          const py = Math.floor(a.y);
+          const q = (n: number) => Math.round(n * AGENT_SCALE);
+          ctx.strokeRect(px - q(12), py - q(16), q(24), q(24));
+        });
+      }
+
+      if (debugOptionsRef.current.enabled && debugOptionsRef.current.fps) {
+        ctx.fillStyle = "rgba(2,6,23,0.85)";
+        ctx.fillRect(Math.floor(camX - 54), Math.floor(camY - 24), 108, 16);
+        ctx.strokeStyle = "rgba(56,189,248,0.7)";
+        ctx.strokeRect(Math.floor(camX - 54), Math.floor(camY - 24), 108, 16);
+        ctx.fillStyle = "#e2e8f0";
+        ctx.font = "10px ui-monospace, SFMono-Regular, Menlo, monospace";
+        ctx.textAlign = "center";
+        ctx.fillText(`FPS ${fps.toFixed(1)}`, Math.floor(camX), Math.floor(camY - 12));
+        ctx.textAlign = "start";
       }
 
       ctx.restore();
@@ -665,28 +787,59 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
       canvas.removeEventListener("click", onClick);
       window.removeEventListener("keydown", onKey);
     };
-  }, [units, selectedCode, debug]);
+  }, [units, selectedCode]);
 
   return (
     <section className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold">Operations Floor (Pixel View)</h2>
-        <div className="flex items-center gap-2 text-xs text-zinc-400">
-          <span>Overview {selectedUnit ? "- Focus active" : "- Full floor"}</span>
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold">Operations Floor (Pixel View)</h2>
+          <p className="text-xs text-zinc-400">{selectedUnit ? "Focus mode active · Esc to exit" : "Click an employee to focus · Full floor"}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-400">
           <button
             type="button"
             onClick={() => {
-              const next = !debug;
-              setDebug(next);
-              if (typeof window !== "undefined") window.localStorage.setItem("mc_pixel_debug", next ? "1" : "0");
+              setDebugOptions((prev) => {
+                const enabled = !prev.enabled;
+                return {
+                  enabled,
+                  grid: enabled ? prev.grid || !prev.enabled : prev.grid,
+                  hitboxes: enabled ? prev.hitboxes || !prev.enabled : prev.hitboxes,
+                  fps: enabled ? prev.fps || !prev.enabled : prev.fps,
+                };
+              });
             }}
             className="rounded border border-zinc-700 px-2 py-1 hover:border-zinc-500"
           >
-            {debug ? "Debug ON" : "Debug OFF"}
+            {debugOptions.enabled ? "Debug ON" : "Debug OFF"}
           </button>
+          <label className="inline-flex items-center gap-1 rounded border border-zinc-700 px-2 py-1">
+            <input type="checkbox" checked={debugOptions.grid} onChange={(e) => setDebugOptions((prev) => ({ ...prev, enabled: true, grid: e.target.checked }))} />
+            Grid
+          </label>
+          <label className="inline-flex items-center gap-1 rounded border border-zinc-700 px-2 py-1">
+            <input type="checkbox" checked={debugOptions.hitboxes} onChange={(e) => setDebugOptions((prev) => ({ ...prev, enabled: true, hitboxes: e.target.checked }))} />
+            Hitboxes
+          </label>
+          <label className="inline-flex items-center gap-1 rounded border border-zinc-700 px-2 py-1">
+            <input type="checkbox" checked={debugOptions.fps} onChange={(e) => setDebugOptions((prev) => ({ ...prev, enabled: true, fps: e.target.checked }))} />
+            FPS
+          </label>
         </div>
       </div>
-
+      <div className="mb-3 grid gap-2 rounded-lg border border-zinc-800 bg-zinc-950/50 p-3 text-xs text-zinc-300 md:grid-cols-2">
+        <label className="flex items-center gap-2">
+          <span className="min-w-32">Camera smoothness</span>
+          <input type="range" min={MIN_ZOOM_SMOOTHNESS} max={MAX_ZOOM_SMOOTHNESS} step={0.01} value={cameraTuning.zoomSmoothness} onChange={(e) => setCameraTuning((prev) => ({ ...prev, zoomSmoothness: clamp(Number(e.target.value), MIN_ZOOM_SMOOTHNESS, MAX_ZOOM_SMOOTHNESS) }))} className="flex-1" />
+          <span className="w-10 text-right">{cameraTuning.zoomSmoothness.toFixed(2)}</span>
+        </label>
+        <label className="flex items-center gap-2">
+          <span className="min-w-32">Sprite FPS</span>
+          <input type="range" min={MIN_SPRITE_FPS} max={MAX_SPRITE_FPS} step={1} value={cameraTuning.spriteFps} onChange={(e) => setCameraTuning((prev) => ({ ...prev, spriteFps: clamp(Number(e.target.value), MIN_SPRITE_FPS, MAX_SPRITE_FPS) }))} className="flex-1" />
+          <span className="w-10 text-right">{cameraTuning.spriteFps.toFixed(0)}</span>
+        </label>
+      </div>
       <div ref={wrapRef} className="relative overflow-hidden rounded-xl border border-zinc-800 bg-[#020617]">
         <canvas
           ref={canvasRef}
