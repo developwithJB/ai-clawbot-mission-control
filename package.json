@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "snapshot:generate": "SAFE_MODE=true node --experimental-strip-types scripts/generate_snapshot.ts data/snapshot.generated.json",
+    "snapshot:publish": "bash scripts/publish_snapshot.sh",
+    "approvals:poll": "node --experimental-strip-types scripts/poll_approvals.ts"
   },
   "dependencies": {
     "better-sqlite3": "^12.6.2",

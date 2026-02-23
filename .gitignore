@@ -41,6 +41,8 @@ next-env.d.ts
 
 # local generated artifacts
 data/snapshot.generated.json
+data/local-events.log
+data/approval-issues.json
 db/*.sqlite
 db/*.sqlite-shm
 db/*.sqlite-wal
