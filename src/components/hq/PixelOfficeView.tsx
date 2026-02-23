@@ -139,58 +139,97 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
     g.fillStyle = "#0b1220";
     g.fillRect(0, 0, WORLD_W, WORLD_H);
 
-    // Shared office interior floor: modern materials with broad surfaces (avoid blocky checker feel).
-    g.fillStyle = "#edf2f7";
+    // Shared office shell and wall band (gives top-down scene more depth while preserving pixel style).
+    g.fillStyle = "#0f172a";
     g.fillRect(2 * TILE, 2 * TILE, 68 * TILE, 40 * TILE);
+    g.fillStyle = "#1e293b";
+    g.fillRect(4 * TILE, 5 * TILE, 63 * TILE, 4 * TILE);
 
-    // Main cool-gray office tile zones (large panels, subtle seams)
-    g.fillStyle = "#dbe2ea";
-    g.fillRect(4 * TILE, 5 * TILE, 63 * TILE, 16 * TILE);
-    g.fillStyle = "#d3dbe5";
-    g.fillRect(4 * TILE, 21 * TILE, 63 * TILE, 20 * TILE);
+    // Main floor plane with slight vertical gradient via layered strips (pseudo perspective).
+    g.fillStyle = "#e8eef5";
+    g.fillRect(4 * TILE, 9 * TILE, 63 * TILE, 32 * TILE);
+    g.fillStyle = "rgba(203,213,225,0.28)";
+    g.fillRect(4 * TILE, 9 * TILE, 63 * TILE, 7 * TILE);
+    g.fillStyle = "rgba(148,163,184,0.16)";
+    g.fillRect(4 * TILE, 30 * TILE, 63 * TILE, 11 * TILE);
 
-    // Soft seam lines every 2 tiles for interior realism without checker blocks
-    g.strokeStyle = "rgba(100,116,139,0.18)";
+    // Wall/floor trim and right-side depth trim.
+    g.fillStyle = "#64748b";
+    g.fillRect(4 * TILE, 9 * TILE, 63 * TILE, 1);
+    g.fillStyle = "rgba(15,23,42,0.35)";
+    g.fillRect(66 * TILE, 9 * TILE, 1, 32 * TILE);
+
+    // Main cool-gray floor panel seams (wide and subtle).
+    g.strokeStyle = "rgba(100,116,139,0.16)";
     g.lineWidth = 1;
-    for (let y = 5 * TILE; y <= 41 * TILE; y += 2 * TILE) {
+    for (let y = 10 * TILE; y <= 41 * TILE; y += 2 * TILE) {
       g.beginPath();
       g.moveTo(4 * TILE, y);
       g.lineTo(67 * TILE, y);
       g.stroke();
     }
-    for (let x = 4 * TILE; x <= 67 * TILE; x += 3 * TILE) {
+    for (let x = 4 * TILE; x <= 67 * TILE; x += 4 * TILE) {
       g.beginPath();
-      g.moveTo(x, 5 * TILE);
+      g.moveTo(x, 10 * TILE);
       g.lineTo(x, 41 * TILE);
       g.stroke();
     }
 
-    // Warm wood lounge/meeting accents
-    g.fillStyle = "#caa37a";
-    g.fillRect(50 * TILE, 5 * TILE, 16 * TILE, 9 * TILE);
-    g.fillRect(52 * TILE, 25 * TILE, 15 * TILE, 14 * TILE);
-    g.strokeStyle = "rgba(120,53,15,0.28)";
-    for (let y = 5 * TILE; y <= 39 * TILE; y += 6) {
-      if (y < 14 * TILE || y > 25 * TILE) {
+    // Zone-matched floor mats under each desk island so desks feel grounded to their assignment areas.
+    Object.entries(ZONES).forEach(([code, z], idx) => {
+      const isFrontRow = z.y < 12 * TILE;
+      const matY = Math.floor(z.y + z.h - (isFrontRow ? 12 : 14));
+      const matH = isFrontRow ? 10 : 12;
+      const matX = z.x + 2;
+      const matW = z.w - 4;
+      const matPalette = code === "GOV-1"
+        ? { base: "#d6b487", seam: "rgba(146,64,14,0.24)" }
+        : idx % 2 === 0
+          ? { base: "#c9d6e3", seam: "rgba(71,85,105,0.24)" }
+          : { base: "#becedf", seam: "rgba(51,65,85,0.24)" };
+      g.fillStyle = matPalette.base;
+      g.fillRect(matX, matY, matW, matH);
+      g.strokeStyle = matPalette.seam;
+      g.strokeRect(matX, matY, matW, matH);
+      g.strokeStyle = "rgba(148,163,184,0.15)";
+      for (let sx = matX + 3; sx < matX + matW - 2; sx += 6) {
         g.beginPath();
-        g.moveTo(50 * TILE, y);
-        g.lineTo(67 * TILE, y);
+        g.moveTo(sx, matY + 1);
+        g.lineTo(sx, matY + matH - 1);
         g.stroke();
       }
+      g.fillStyle = "rgba(15,23,42,0.18)";
+      g.fillRect(matX + 1, matY + matH - 2, matW - 2, 1);
+    });
+
+    // Warm wood lounge/meeting accents.
+    g.fillStyle = "#caa37a";
+    g.fillRect(50 * TILE, 9 * TILE, 16 * TILE, 11 * TILE);
+    g.fillRect(52 * TILE, 25 * TILE, 15 * TILE, 14 * TILE);
+    g.strokeStyle = "rgba(120,53,15,0.28)";
+    for (let y = 9 * TILE; y <= 39 * TILE; y += 6) {
+      g.beginPath();
+      g.moveTo(50 * TILE, y);
+      g.lineTo(67 * TILE, y);
+      g.stroke();
     }
 
-    // Circulation paths (polished concrete look)
+    // Circulation paths (polished concrete look with slight edge shadow).
     g.fillStyle = "#c7d2df";
     g.fillRect(5 * TILE, 14 * TILE, 62 * TILE, 5 * TILE);
-    g.fillRect(34 * TILE, 6 * TILE, 4 * TILE, 33 * TILE);
+    g.fillRect(34 * TILE, 10 * TILE, 4 * TILE, 29 * TILE);
+    g.fillStyle = "rgba(15,23,42,0.16)";
+    g.fillRect(5 * TILE, 19 * TILE, 62 * TILE, 1);
+    g.fillRect(38 * TILE, 10 * TILE, 1, 29 * TILE);
 
-    // Area rugs to break geometry and feel like a real office
+    // Area rugs to break geometry and feel like a real office.
     g.fillStyle = "rgba(59,130,246,0.12)";
     g.fillRect(8 * TILE, 28 * TILE, 12 * TILE, 11 * TILE);
     g.fillRect(23 * TILE, 28 * TILE, 14 * TILE, 10 * TILE);
     g.fillRect(40 * TILE, 28 * TILE, 10 * TILE, 10 * TILE);
     g.fillRect(53 * TILE, 27 * TILE, 14 * TILE, 12 * TILE);
-    // Shared office shell and border
+
+    // Shared office shell border and side walls.
     g.fillStyle = "#111827";
     g.fillRect(2 * TILE, 2 * TILE, 68 * TILE, 3 * TILE);
     g.fillStyle = "#0f172a";
@@ -204,8 +243,8 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
     g.fillStyle = "rgba(226,232,240,0.08)";
     g.fillRect(5 * TILE, 14 * TILE, 62 * TILE, 1);
     g.fillRect(5 * TILE, 19 * TILE, 62 * TILE, 1);
-    g.fillRect(34 * TILE, 6 * TILE, 1, 33 * TILE);
-    g.fillRect(38 * TILE, 6 * TILE, 1, 33 * TILE);
+    g.fillRect(34 * TILE, 10 * TILE, 1, 29 * TILE);
+    g.fillRect(38 * TILE, 10 * TILE, 1, 29 * TILE);
 
     // City-view window strips
     for (let i = 0; i < 7; i += 1) {
@@ -222,7 +261,9 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
       }
     }
 
-    // JB's office on shared floor with glass accent
+    // JB's office on shared floor with glass accent.
+    g.fillStyle = "rgba(2,6,23,0.35)";
+    g.fillRect(JB_OFFICE.x + 2, JB_OFFICE.y + JB_OFFICE.h, JB_OFFICE.w - 2, 2);
     g.fillStyle = "#0f172a";
     g.fillRect(JB_OFFICE.x, JB_OFFICE.y, JB_OFFICE.w, JB_OFFICE.h);
     g.strokeStyle = "#38bdf8";
@@ -239,7 +280,9 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
       const zh = z.h;
       const zx = z.x;
 
-      // Desk islands + table surfaces
+      // Desk islands + table surfaces with contact shadow.
+      g.fillStyle = "rgba(15,23,42,0.24)";
+      g.fillRect(zx + 5, zy + zh - 2, z.w - 10, 2);
       g.fillStyle = idx % 2 === 0 ? "#475569" : "#52637a";
       g.fillRect(zx + 4, zy + zh - 14, z.w - 8, 5);
       g.fillStyle = "#334155";
@@ -249,6 +292,8 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
       const chairs = Math.max(2, Math.floor(z.w / 24));
       for (let i = 0; i < chairs; i += 1) {
         const cx = zx + 7 + i * 22;
+        g.fillStyle = "rgba(2,6,23,0.35)";
+        g.fillRect(cx + 1, zy + zh - 1, 5, 1);
         g.fillStyle = "#1e293b";
         g.fillRect(cx, zy + zh - 5, 6, 4);
         g.fillStyle = "#64748b";
@@ -259,6 +304,8 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
       const stations = Math.max(2, Math.floor(z.w / 28));
       for (let i = 0; i < stations; i += 1) {
         const mx = zx + 8 + i * 24;
+        g.fillStyle = "rgba(2,6,23,0.35)";
+        g.fillRect(mx + 1, zy + zh - 13, 9, 1);
         g.fillStyle = "#020617";
         g.fillRect(mx, zy + zh - 20, 10, 6);
         g.fillStyle = "#22d3ee";
@@ -278,6 +325,8 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
 
     // Idle / lounge zones with modern props
     const b = IDLE_ZONES.basketball;
+    g.fillStyle = "rgba(2,6,23,0.28)";
+    g.fillRect(b.x + 1, b.y + b.h, b.w - 2, 2);
     g.fillStyle = "#1e293b";
     g.fillRect(b.x, b.y, b.w, b.h);
     g.strokeStyle = "#38bdf8";
@@ -286,6 +335,8 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
     g.fillRect(b.x + b.w - 18, b.y + 10, 10, 10);
 
     const c = IDLE_ZONES.cards;
+    g.fillStyle = "rgba(2,6,23,0.28)";
+    g.fillRect(c.x + 1, c.y + c.h, c.w - 2, 2);
     g.fillStyle = "#1f2937";
     g.fillRect(c.x, c.y, c.w, c.h);
     g.fillStyle = "#475569";
@@ -295,6 +346,8 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
     g.fillRect(c.x + 42, c.y + 22, 4, 6);
 
     const w = IDLE_ZONES.watercooler;
+    g.fillStyle = "rgba(2,6,23,0.28)";
+    g.fillRect(w.x + 1, w.y + w.h, w.w - 2, 2);
     g.fillStyle = "#1f2937";
     g.fillRect(w.x, w.y, w.w, w.h);
     g.fillStyle = "#94a3b8";
@@ -303,6 +356,8 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
     g.fillRect(w.x + 28, w.y + 14, 8, 6);
 
     const l = IDLE_ZONES.window;
+    g.fillStyle = "rgba(2,6,23,0.28)";
+    g.fillRect(l.x + 1, l.y + l.h, l.w - 2, 2);
     g.fillStyle = "#1f2937";
     g.fillRect(l.x, l.y, l.w, l.h);
     g.fillStyle = "#475569";
