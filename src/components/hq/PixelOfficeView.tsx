@@ -58,7 +58,7 @@ const WORLD_H = 44 * TILE;
 const SPRITE_FPS = 6;
 const AGENT_SCALE = 1.2;
 const EMOJI_BASE_FONT_PX = 14;
-const EMOJI_OVERVIEW_MULTIPLIER = 5;
+const EMOJI_OVERVIEW_MULTIPLIER = 4.25;
 const DEFAULT_ZOOM = 1.18;
 const WALK_SPEED_FACTOR = 0.6;
 const MAX_PARTICLES_PER_ACTOR = 2;
@@ -139,114 +139,19 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
     g.fillStyle = "#0b1220";
     g.fillRect(0, 0, WORLD_W, WORLD_H);
 
-    // Shared office shell and wall band (gives top-down scene more depth while preserving pixel style).
+    // Shared shell + coherent office interior planes.
+    const room = { x: 2 * TILE, y: 2 * TILE, w: 68 * TILE, h: 40 * TILE };
+    const wallBand = { x: 4 * TILE, y: 5 * TILE, w: 63 * TILE, h: 4 * TILE };
+    const floor = { x: 4 * TILE, y: 9 * TILE, w: 63 * TILE, h: 32 * TILE };
+    const walkwayH = { x: 5 * TILE, y: 14 * TILE, w: 62 * TILE, h: 5 * TILE };
+    const walkwayV = { x: 34 * TILE, y: 10 * TILE, w: 4 * TILE, h: 29 * TILE };
+
     g.fillStyle = "#0f172a";
-    g.fillRect(2 * TILE, 2 * TILE, 68 * TILE, 40 * TILE);
-    g.fillStyle = "#1e293b";
-    g.fillRect(4 * TILE, 5 * TILE, 63 * TILE, 4 * TILE);
+    g.fillRect(room.x, room.y, room.w, room.h);
+    g.fillStyle = "#1f2937";
+    g.fillRect(wallBand.x, wallBand.y, wallBand.w, wallBand.h);
 
-    // Main floor plane with slight vertical gradient via layered strips (pseudo perspective).
-    g.fillStyle = "#e8eef5";
-    g.fillRect(4 * TILE, 9 * TILE, 63 * TILE, 32 * TILE);
-    g.fillStyle = "rgba(203,213,225,0.28)";
-    g.fillRect(4 * TILE, 9 * TILE, 63 * TILE, 7 * TILE);
-    g.fillStyle = "rgba(148,163,184,0.16)";
-    g.fillRect(4 * TILE, 30 * TILE, 63 * TILE, 11 * TILE);
-
-    // Wall/floor trim and right-side depth trim.
-    g.fillStyle = "#64748b";
-    g.fillRect(4 * TILE, 9 * TILE, 63 * TILE, 1);
-    g.fillStyle = "rgba(15,23,42,0.35)";
-    g.fillRect(66 * TILE, 9 * TILE, 1, 32 * TILE);
-
-    // Main cool-gray floor panel seams (wide and subtle).
-    g.strokeStyle = "rgba(100,116,139,0.16)";
-    g.lineWidth = 1;
-    for (let y = 10 * TILE; y <= 41 * TILE; y += 2 * TILE) {
-      g.beginPath();
-      g.moveTo(4 * TILE, y);
-      g.lineTo(67 * TILE, y);
-      g.stroke();
-    }
-    for (let x = 4 * TILE; x <= 67 * TILE; x += 4 * TILE) {
-      g.beginPath();
-      g.moveTo(x, 10 * TILE);
-      g.lineTo(x, 41 * TILE);
-      g.stroke();
-    }
-
-    // Zone-matched floor mats under each desk island so desks feel grounded to their assignment areas.
-    Object.entries(ZONES).forEach(([code, z], idx) => {
-      const isFrontRow = z.y < 12 * TILE;
-      const matY = Math.floor(z.y + z.h - (isFrontRow ? 12 : 14));
-      const matH = isFrontRow ? 10 : 12;
-      const matX = z.x + 2;
-      const matW = z.w - 4;
-      const matPalette = code === "GOV-1"
-        ? { base: "#d6b487", seam: "rgba(146,64,14,0.24)" }
-        : idx % 2 === 0
-          ? { base: "#c9d6e3", seam: "rgba(71,85,105,0.24)" }
-          : { base: "#becedf", seam: "rgba(51,65,85,0.24)" };
-      g.fillStyle = matPalette.base;
-      g.fillRect(matX, matY, matW, matH);
-      g.strokeStyle = matPalette.seam;
-      g.strokeRect(matX, matY, matW, matH);
-      g.strokeStyle = "rgba(148,163,184,0.15)";
-      for (let sx = matX + 3; sx < matX + matW - 2; sx += 6) {
-        g.beginPath();
-        g.moveTo(sx, matY + 1);
-        g.lineTo(sx, matY + matH - 1);
-        g.stroke();
-      }
-      g.fillStyle = "rgba(15,23,42,0.18)";
-      g.fillRect(matX + 1, matY + matH - 2, matW - 2, 1);
-    });
-
-    // Warm wood lounge/meeting accents.
-    g.fillStyle = "#caa37a";
-    g.fillRect(50 * TILE, 9 * TILE, 16 * TILE, 11 * TILE);
-    g.fillRect(52 * TILE, 25 * TILE, 15 * TILE, 14 * TILE);
-    g.strokeStyle = "rgba(120,53,15,0.28)";
-    for (let y = 9 * TILE; y <= 39 * TILE; y += 6) {
-      g.beginPath();
-      g.moveTo(50 * TILE, y);
-      g.lineTo(67 * TILE, y);
-      g.stroke();
-    }
-
-    // Circulation paths (polished concrete look with slight edge shadow).
-    g.fillStyle = "#c7d2df";
-    g.fillRect(5 * TILE, 14 * TILE, 62 * TILE, 5 * TILE);
-    g.fillRect(34 * TILE, 10 * TILE, 4 * TILE, 29 * TILE);
-    g.fillStyle = "rgba(15,23,42,0.16)";
-    g.fillRect(5 * TILE, 19 * TILE, 62 * TILE, 1);
-    g.fillRect(38 * TILE, 10 * TILE, 1, 29 * TILE);
-
-    // Area rugs to break geometry and feel like a real office.
-    g.fillStyle = "rgba(59,130,246,0.12)";
-    g.fillRect(8 * TILE, 28 * TILE, 12 * TILE, 11 * TILE);
-    g.fillRect(23 * TILE, 28 * TILE, 14 * TILE, 10 * TILE);
-    g.fillRect(40 * TILE, 28 * TILE, 10 * TILE, 10 * TILE);
-    g.fillRect(53 * TILE, 27 * TILE, 14 * TILE, 12 * TILE);
-
-    // Shared office shell border and side walls.
-    g.fillStyle = "#111827";
-    g.fillRect(2 * TILE, 2 * TILE, 68 * TILE, 3 * TILE);
-    g.fillStyle = "#0f172a";
-    g.fillRect(67 * TILE, 5 * TILE, 3 * TILE, 37 * TILE);
-    g.fillRect(2 * TILE, 5 * TILE, 3 * TILE, 37 * TILE);
-    g.strokeStyle = "#64748b";
-    g.lineWidth = 2;
-    g.strokeRect(2 * TILE, 2 * TILE, 68 * TILE, 40 * TILE);
-
-    // Subtle interior transition strips (no lane lines).
-    g.fillStyle = "rgba(226,232,240,0.08)";
-    g.fillRect(5 * TILE, 14 * TILE, 62 * TILE, 1);
-    g.fillRect(5 * TILE, 19 * TILE, 62 * TILE, 1);
-    g.fillRect(34 * TILE, 10 * TILE, 1, 29 * TILE);
-    g.fillRect(38 * TILE, 10 * TILE, 1, 29 * TILE);
-
-    // City-view window strips
+    // Window strip and warm accent sconces on one shared wall plane.
     for (let i = 0; i < 7; i += 1) {
       const wx = (6 + i * 9) * TILE;
       g.fillStyle = "#0ea5e9";
@@ -255,11 +160,81 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
       g.fillRect(wx + 1, 3 * TILE, 3 * TILE, 1);
       g.fillStyle = "#1e293b";
       g.fillRect(wx, 4 * TILE, 5 * TILE, 1);
-      for (let bx = 0; bx < 4; bx += 1) {
-        g.fillStyle = bx % 2 === 0 ? "#f8fafc" : "#cbd5e1";
-        g.fillRect(wx + bx + 1, 3 * TILE + 1, 1, 2);
-      }
     }
+    for (let i = 0; i < 5; i += 1) {
+      g.fillStyle = "rgba(251,191,36,0.3)";
+      g.fillRect(9 * TILE + i * 12 * TILE, 6 * TILE, 2, 2);
+    }
+
+    // Main floor plane + subtle depth shading.
+    g.fillStyle = "#dce5ef";
+    g.fillRect(floor.x, floor.y, floor.w, floor.h);
+    g.fillStyle = "rgba(226,232,240,0.36)";
+    g.fillRect(floor.x, floor.y, floor.w, 6 * TILE);
+    g.fillStyle = "rgba(100,116,139,0.14)";
+    g.fillRect(floor.x, 31 * TILE, floor.w, 10 * TILE);
+
+    // Coherent walkway planes aligned with the room perspective.
+    g.fillStyle = "#c4d0dd";
+    g.fillRect(walkwayH.x, walkwayH.y, walkwayH.w, walkwayH.h);
+    g.fillRect(walkwayV.x, walkwayV.y, walkwayV.w, walkwayV.h);
+    g.fillStyle = "rgba(15,23,42,0.18)";
+    g.fillRect(walkwayH.x, walkwayH.y + walkwayH.h, walkwayH.w, 1);
+    g.fillRect(walkwayV.x + walkwayV.w, walkwayV.y, 1, walkwayV.h);
+
+    // Perspective-consistent floor seams.
+    g.strokeStyle = "rgba(100,116,139,0.15)";
+    g.lineWidth = 1;
+    const seamRows = [10, 12, 14, 16, 18, 21, 24, 27, 30, 34, 38, 41];
+    seamRows.forEach((r) => {
+      g.beginPath();
+      g.moveTo(floor.x, r * TILE);
+      g.lineTo(floor.x + floor.w, r * TILE);
+      g.stroke();
+    });
+    for (let x = floor.x + 4 * TILE; x < floor.x + floor.w; x += 8 * TILE) {
+      g.beginPath();
+      g.moveTo(x, floor.y);
+      g.lineTo(x, floor.y + floor.h);
+      g.stroke();
+    }
+
+    // Zone floor mats aligned to shared desk anchor band.
+    Object.entries(ZONES).forEach(([code, z], idx) => {
+      const deskAnchorY = z.y + z.h - 6;
+      const matY = deskAnchorY - 9;
+      const matH = 11;
+      const matX = z.x + 3;
+      const matW = z.w - 6;
+      const matPalette = code === "GOV-1"
+        ? { base: "#d8bd97", seam: "rgba(146,64,14,0.23)" }
+        : idx % 2 === 0
+          ? { base: "#c7d5e3", seam: "rgba(71,85,105,0.22)" }
+          : { base: "#c1cfde", seam: "rgba(51,65,85,0.22)" };
+      g.fillStyle = matPalette.base;
+      g.fillRect(matX, matY, matW, matH);
+      g.strokeStyle = matPalette.seam;
+      g.strokeRect(matX, matY, matW, matH);
+      g.fillStyle = "rgba(15,23,42,0.14)";
+      g.fillRect(matX + 1, deskAnchorY, matW - 2, 1);
+    });
+
+    // Shared office shell border and side walls.
+    g.fillStyle = "#111827";
+    g.fillRect(room.x, room.y, room.w, 3);
+    g.fillStyle = "#0f172a";
+    g.fillRect(room.x, room.y + 3, 3, room.h - 3);
+    g.fillRect(room.x + room.w - 3, room.y + 3, 3, room.h - 3);
+    g.strokeStyle = "#64748b";
+    g.lineWidth = 2;
+    g.strokeRect(room.x, room.y, room.w, room.h);
+
+    // Lounge surfaces (single consistent accent family).
+    g.fillStyle = "rgba(56,189,248,0.11)";
+    g.fillRect(8 * TILE, 28 * TILE, 12 * TILE, 11 * TILE);
+    g.fillRect(23 * TILE, 28 * TILE, 14 * TILE, 10 * TILE);
+    g.fillRect(40 * TILE, 28 * TILE, 10 * TILE, 10 * TILE);
+    g.fillRect(53 * TILE, 27 * TILE, 14 * TILE, 12 * TILE);
 
     // JB's office on shared floor with glass accent.
     g.fillStyle = "rgba(2,6,23,0.35)";
@@ -279,40 +254,52 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
       const zy = z.y;
       const zh = z.h;
       const zx = z.x;
+      const deskTopY = zy + zh - 14;
+      const deskFrontY = zy + zh - 9;
+      const floorTouchY = zy + zh - 2;
 
-      // Desk islands + table surfaces with contact shadow.
-      g.fillStyle = "rgba(15,23,42,0.24)";
-      g.fillRect(zx + 5, zy + zh - 2, z.w - 10, 2);
-      g.fillStyle = idx % 2 === 0 ? "#475569" : "#52637a";
-      g.fillRect(zx + 4, zy + zh - 14, z.w - 8, 5);
+      // Desk block anchored to one floor contact line.
+      g.fillStyle = "rgba(15,23,42,0.22)";
+      g.fillRect(zx + 4, floorTouchY, z.w - 8, 2);
+      g.fillStyle = idx % 2 === 0 ? "#4b5d73" : "#52657d";
+      g.fillRect(zx + 4, deskTopY, z.w - 8, 5);
       g.fillStyle = "#334155";
-      g.fillRect(zx + 4, zy + zh - 9, z.w - 8, 7);
+      g.fillRect(zx + 4, deskFrontY, z.w - 8, 7);
 
-      // Chairs
+      // Desk legs physically touching floor seam.
+      g.fillStyle = "#1e293b";
+      g.fillRect(zx + 6, deskFrontY + 6, 2, floorTouchY - (deskFrontY + 6));
+      g.fillRect(zx + z.w - 8, deskFrontY + 6, 2, floorTouchY - (deskFrontY + 6));
+
+      // Chairs with direct contact shadows on the same floor line.
       const chairs = Math.max(2, Math.floor(z.w / 24));
       for (let i = 0; i < chairs; i += 1) {
         const cx = zx + 7 + i * 22;
-        g.fillStyle = "rgba(2,6,23,0.35)";
-        g.fillRect(cx + 1, zy + zh - 1, 5, 1);
+        g.fillStyle = "rgba(2,6,23,0.36)";
+        g.fillRect(cx + 1, floorTouchY, 5, 1);
         g.fillStyle = "#1e293b";
-        g.fillRect(cx, zy + zh - 5, 6, 4);
+        g.fillRect(cx, floorTouchY - 4, 6, 4);
         g.fillStyle = "#64748b";
-        g.fillRect(cx + 1, zy + zh - 7, 4, 2);
+        g.fillRect(cx + 1, floorTouchY - 6, 4, 2);
       }
 
-      // Monitors and screens
+      // Monitors with stand-to-desk contact + tiny shadow for grounding.
       const stations = Math.max(2, Math.floor(z.w / 28));
       for (let i = 0; i < stations; i += 1) {
         const mx = zx + 8 + i * 24;
-        g.fillStyle = "rgba(2,6,23,0.35)";
-        g.fillRect(mx + 1, zy + zh - 13, 9, 1);
         g.fillStyle = "#020617";
-        g.fillRect(mx, zy + zh - 20, 10, 6);
+        g.fillRect(mx, deskTopY - 6, 10, 6);
         g.fillStyle = "#22d3ee";
-        g.fillRect(mx + 1, zy + zh - 19, 8, 4);
+        g.fillRect(mx + 1, deskTopY - 5, 8, 4);
+        g.fillStyle = "#0f172a";
+        g.fillRect(mx + 4, deskTopY, 2, 3);
+        g.fillStyle = "rgba(2,6,23,0.35)";
+        g.fillRect(mx + 3, deskTopY + 3, 4, 1);
       }
 
-      // Plant prop + side table
+      // Plant + side console on same perspective plane.
+      g.fillStyle = "rgba(15,23,42,0.25)";
+      g.fillRect(zx + z.w - 11, zy + 8, 8, 1);
       g.fillStyle = "#14532d";
       g.fillRect(zx + z.w - 10, zy + 4, 5, 5);
       g.fillStyle = "#4ade80";
