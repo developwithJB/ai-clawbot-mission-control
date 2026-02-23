@@ -36,6 +36,8 @@ type Props = {
   approvals: OfficeApproval[];
 };
 
+type IdleActivity = "basketball" | "cards" | "watercooler" | "window";
+
 type Actor = {
   code: string;
   x: number;
@@ -47,13 +49,16 @@ type Actor = {
   frame: number;
   frameAcc: number;
   trail: Array<{ x: number; y: number; life: number }>;
+  idleActivity: IdleActivity;
 };
 
 const TILE = 16;
 const WORLD_W = 72 * TILE;
 const WORLD_H = 44 * TILE;
 const SPRITE_FPS = 7;
-const GOV_POS = { x: 17 * TILE, y: 20 * TILE };
+const AGENT_SCALE = 1.35;
+const DEFAULT_ZOOM = 1.18;
+const JB_OFFICE = { x: 50 * TILE, y: 17 * TILE, w: 16 * TILE, h: 9 * TILE, label: "JB's Office" };
 
 const ZONES: Record<string, { x: number; y: number; w: number; h: number; label: string }> = {
   "ARCH-1": { x: 6 * TILE, y: 6 * TILE, w: 9 * TILE, h: 6 * TILE, label: "Architecture Desk" },
@@ -65,6 +70,15 @@ const ZONES: Record<string, { x: number; y: number; w: number; h: number; label:
   "GTM-1": { x: 41 * TILE, y: 17 * TILE, w: 10 * TILE, h: 8 * TILE, label: "Broadcast Desk" },
   "REV-1": { x: 55 * TILE, y: 17 * TILE, w: 11 * TILE, h: 8 * TILE, label: "Money Terminal" },
 };
+
+const IDLE_ZONES: Record<IdleActivity, { x: number; y: number; w: number; h: number; label: string }> = {
+  basketball: { x: 8 * TILE, y: 28 * TILE, w: 12 * TILE, h: 11 * TILE, label: "Basketball Mini Court" },
+  cards: { x: 23 * TILE, y: 28 * TILE, w: 14 * TILE, h: 10 * TILE, label: "Card Table" },
+  watercooler: { x: 40 * TILE, y: 28 * TILE, w: 10 * TILE, h: 10 * TILE, label: "Water Cooler" },
+  window: { x: 53 * TILE, y: 27 * TILE, w: 14 * TILE, h: 12 * TILE, label: "Window Lounge" },
+};
+
+const IDLE_ACTIVITIES: IdleActivity[] = ["basketball", "cards", "watercooler", "window"];
 
 function tierColor(tier: 1 | 2 | 3) {
   if (tier === 1) return "#38bdf8";
@@ -166,6 +180,21 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
       g.fillRect(wx, 4 * TILE, 5 * TILE, 1);
     }
 
+    // JB's Office in shared floor (for blocked / approvals queue)
+    g.fillStyle = "#2b1d15";
+    g.fillRect(JB_OFFICE.x, JB_OFFICE.y, JB_OFFICE.w, JB_OFFICE.h);
+    g.strokeStyle = "#f59e0b";
+    g.strokeRect(JB_OFFICE.x + 1, JB_OFFICE.y + 1, JB_OFFICE.w - 2, JB_OFFICE.h - 2);
+    g.fillStyle = "#7c2d12";
+    g.fillRect(JB_OFFICE.x + 10, JB_OFFICE.y + 10, JB_OFFICE.w - 20, 8);
+    g.fillStyle = "#fef3c7";
+    g.fillRect(JB_OFFICE.x + 14, JB_OFFICE.y + 12, JB_OFFICE.w - 28, 4);
+    // queue lane markers
+    g.fillStyle = "#fbbf24";
+    for (let i = 0; i < 5; i += 1) {
+      g.fillRect(JB_OFFICE.x - 22 + i * 10, JB_OFFICE.y + JB_OFFICE.h - 10, 6, 2);
+    }
+
     Object.values(ZONES).forEach((z, idx) => {
       const zy = z.y;
       const zh = z.h;
@@ -207,6 +236,40 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
       g.fillRect(zx + 5, zy + 4, 6, 4);
     });
 
+    // Explicit idle / leisure zones on shared south floor
+    const b = IDLE_ZONES.basketball;
+    g.fillStyle = "#5a321e";
+    g.fillRect(b.x, b.y, b.w, b.h);
+    g.strokeStyle = "#f59e0b";
+    g.strokeRect(b.x + 6, b.y + 6, b.w - 12, b.h - 12);
+    g.fillStyle = "#f97316";
+    g.fillRect(b.x + b.w - 18, b.y + 10, 10, 10);
+
+    const c = IDLE_ZONES.cards;
+    g.fillStyle = "#3f2a1d";
+    g.fillRect(c.x, c.y, c.w, c.h);
+    g.fillStyle = "#65412b";
+    g.fillRect(c.x + 16, c.y + 14, 36, 20);
+    g.fillStyle = "#e2e8f0";
+    g.fillRect(c.x + 22, c.y + 18, 4, 6);
+    g.fillRect(c.x + 42, c.y + 22, 4, 6);
+
+    const w = IDLE_ZONES.watercooler;
+    g.fillStyle = "#3e2e24";
+    g.fillRect(w.x, w.y, w.w, w.h);
+    g.fillStyle = "#94a3b8";
+    g.fillRect(w.x + 26, w.y + 12, 12, 24);
+    g.fillStyle = "#38bdf8";
+    g.fillRect(w.x + 28, w.y + 14, 8, 6);
+
+    const l = IDLE_ZONES.window;
+    g.fillStyle = "#33261d";
+    g.fillRect(l.x, l.y, l.w, l.h);
+    g.fillStyle = "#7c5a43";
+    g.fillRect(l.x + 10, l.y + 24, l.w - 20, 12);
+    g.fillStyle = "#fde68a";
+    g.fillRect(l.x + 6, l.y + 6, l.w - 12, 8);
+
     bgRef.current = bg;
   }, []);
 
@@ -226,6 +289,7 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
           frame: 0,
           frameAcc: 0,
           trail: [],
+          idleActivity: IDLE_ACTIVITIES[index % IDLE_ACTIVITIES.length],
         });
       }
     });
@@ -246,7 +310,7 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
     let last = performance.now();
     let camX = WORLD_W / 2;
     let camY = WORLD_H / 2;
-    let camZoom = 1;
+    let camZoom = DEFAULT_ZOOM;
 
     const resize = () => {
       const rect = wrap.getBoundingClientRect();
@@ -264,14 +328,17 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
 
       const selected = units.find((u) => u.code === selectedCode);
       if (selected) {
+        const isJbQueue = selected.status === "Blocked" || selected.status === "Needs JB" || selected.status === "Waiting approval";
         const z = ZONES[selected.code] ?? ZONES["OPS-1"];
-        camX += (z.x + z.w / 2 - camX) * 0.08;
-        camY += (z.y + z.h / 2 - camY) * 0.08;
+        const focusX = isJbQueue ? JB_OFFICE.x + JB_OFFICE.w / 2 : z.x + z.w / 2;
+        const focusY = isJbQueue ? JB_OFFICE.y + JB_OFFICE.h / 2 : z.y + z.h / 2;
+        camX += (focusX - camX) * 0.08;
+        camY += (focusY - camY) * 0.08;
         camZoom += (1.65 - camZoom) * 0.08;
       } else {
         camX += (WORLD_W / 2 - camX) * 0.08;
         camY += (WORLD_H / 2 - camY) * 0.08;
-        camZoom += (1 - camZoom) * 0.08;
+        camZoom += (DEFAULT_ZOOM - camZoom) * 0.08;
       }
 
       units.forEach((u, idx) => {
@@ -280,17 +347,27 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
 
         const zone = ZONES[u.code] ?? ZONES["OPS-1"];
         let tx = zone.x + zone.w / 2;
-        let ty = zone.y + zone.h / 2;
+        let ty = zone.y + zone.h - 13;
 
         if (u.status === "Needs JB") {
-          tx = GOV_POS.x + 14;
-          ty = GOV_POS.y + ((idx % 3) - 1) * 10;
+          tx = JB_OFFICE.x - 12 - (idx % 3) * 8;
+          ty = JB_OFFICE.y + JB_OFFICE.h - 8 - (idx % 2) * 6;
         } else if (u.status === "Waiting approval") {
-          tx = GOV_POS.x + 28 + (idx % 2) * 8;
-          ty = GOV_POS.y + 8 + (idx % 3) * 6;
+          tx = JB_OFFICE.x + 10 + (idx % 4) * 9;
+          ty = JB_OFFICE.y + JB_OFFICE.h - 10;
         } else if (u.status === "Idle") {
-          tx = zone.x + 12 + (idx % 3) * 10;
-          ty = zone.y + zone.h - 14;
+          actor.idleActivity = IDLE_ACTIVITIES[idx % IDLE_ACTIVITIES.length];
+          const idleZone = IDLE_ZONES[actor.idleActivity];
+          const loop = Math.floor(now / 1500) % 4;
+          tx = idleZone.x + 12 + ((idx + loop) % 4) * 10;
+          ty = idleZone.y + idleZone.h / 2 + ((idx + loop) % 3) * 5 - 8;
+        } else if (u.status === "Working") {
+          const sway = (Math.floor(now / 700) + idx) % 3;
+          tx = zone.x + 12 + (idx % 3) * 16;
+          ty = zone.y + zone.h - 15 + sway;
+        } else if (u.status === "Blocked") {
+          tx = JB_OFFICE.x - 16 - (idx % 3) * 9;
+          ty = JB_OFFICE.y + 8 + (idx % 3) * 5;
         }
 
         actor.tx = Math.floor(tx);
@@ -357,7 +434,13 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
 
       const pulse = (Math.sin(now / 1000) + 1) * 0.5;
       Object.entries(ZONES).forEach(([code, z]) => {
-        ctx.fillStyle = code === "GOV-1" ? `rgba(217,119,6,${0.08 + pulse * 0.08})` : `rgba(180,83,9,${0.025 + pulse * 0.035})`;
+        ctx.fillStyle = code === "GOV-1" ? `rgba(217,119,6,${0.1 + pulse * 0.08})` : `rgba(245,158,11,${0.06 + pulse * 0.05})`;
+        ctx.fillRect(Math.floor(z.x + 2), Math.floor(z.y + z.h - 18), Math.floor(z.w - 4), 14);
+      });
+      ctx.fillStyle = `rgba(251,146,60,${0.14 + pulse * 0.12})`;
+      ctx.fillRect(JB_OFFICE.x - 20, JB_OFFICE.y + 3, JB_OFFICE.w + 24, JB_OFFICE.h - 6);
+      Object.values(IDLE_ZONES).forEach((z) => {
+        ctx.fillStyle = `rgba(56,189,248,${0.06 + pulse * 0.05})`;
         ctx.fillRect(Math.floor(z.x + 2), Math.floor(z.y + 2), Math.floor(z.w - 4), Math.floor(z.h - 4));
       });
 
@@ -377,67 +460,81 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
         const blink = u.status === "Blocked" ? (Math.floor(now / 240) % 2 === 0 ? 1 : 0.4) : 1;
         const frameNudge = actor.frame % 2 === 0 ? 0 : 1;
         const sy = Math.floor(py + bob);
+        const q = (n: number) => Math.round(n * AGENT_SCALE);
 
         // shadow + tile anchor
         ctx.fillStyle = "rgba(2,6,23,0.65)";
-        ctx.fillRect(px - 6, sy + 2, 12, 4);
+        ctx.fillRect(px - q(6), sy + q(2), q(12), q(4));
         ctx.fillStyle = "rgba(30,41,59,0.8)";
-        ctx.fillRect(px - 7, sy + 1, 14, 1);
+        ctx.fillRect(px - q(7), sy + q(1), q(14), q(1));
 
         // tier ring + body with more pixel detail
         ctx.strokeStyle = tierColor(u.tier);
         ctx.lineWidth = 1;
-        ctx.strokeRect(px - 8, sy - 15, 16, 16);
+        ctx.strokeRect(px - q(8), sy - q(15), q(16), q(16));
         ctx.globalAlpha = blink;
 
         ctx.fillStyle = "#111827";
-        ctx.fillRect(px - 5, sy - 10, 10, 9);
+        ctx.fillRect(px - q(5), sy - q(10), q(10), q(9));
         ctx.fillStyle = statusColor(u.status);
-        ctx.fillRect(px - 4 + frameNudge, sy - 9, 8, 7);
+        ctx.fillRect(px - q(4) + frameNudge, sy - q(9), q(8), q(7));
         ctx.fillStyle = "#e2e8f0";
-        ctx.fillRect(px - 1 + frameNudge, sy - 8, 2, 2);
+        ctx.fillRect(px - q(1) + frameNudge, sy - q(8), q(2), q(2));
 
         // head
         ctx.fillStyle = "#f8d6b8";
-        ctx.fillRect(px - 3, sy - 14, 6, 5);
+        ctx.fillRect(px - q(3), sy - q(14), q(6), q(5));
         ctx.fillStyle = "#7c2d12";
-        ctx.fillRect(px - 3, sy - 14, 6, 1);
+        ctx.fillRect(px - q(3), sy - q(14), q(6), q(1));
 
-        // tiny desk-facing hint when idle/working
-        if (u.status === "Working" || u.status === "Idle") {
+        if (u.status === "Working") {
           ctx.fillStyle = "#475569";
-          ctx.fillRect(px - 6, sy - 1, 12, 2);
+          ctx.fillRect(px - q(7), sy - q(1), q(14), q(2));
           ctx.fillStyle = "#f59e0b";
-          ctx.fillRect(px - 3, sy - 2, 6, 1);
+          ctx.fillRect(px - q(3), sy - q(2), q(6), q(1));
         }
 
-        // Employee identity: large, readable emoji marker above character
+        if (u.status === "Idle") {
+          const idleGlyph = actor.idleActivity === "basketball" ? "o" : actor.idleActivity === "cards" ? "#" : actor.idleActivity === "watercooler" ? "~" : "^";
+          ctx.fillStyle = "#0f172a";
+          ctx.fillRect(px + q(6), sy - q(10), q(7), q(7));
+          ctx.fillStyle = "#e2e8f0";
+          ctx.font = `${q(6)}px monospace`;
+          ctx.fillText(idleGlyph, px + q(8), sy - q(4));
+        }
+
         ctx.fillStyle = "rgba(17,24,39,0.9)";
-        ctx.fillRect(px - 10, sy - 36, 20, 12);
+        ctx.fillRect(px - q(10), sy - q(36), q(20), q(12));
         ctx.strokeStyle = "#fbbf24";
-        ctx.strokeRect(px - 10, sy - 36, 20, 12);
-        ctx.font = "15px sans-serif";
+        ctx.strokeRect(px - q(10), sy - q(36), q(20), q(12));
+        ctx.font = `${q(11)}px sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(u.icon, px, sy - 30);
+        ctx.fillText(u.icon, px, sy - q(30));
         ctx.textAlign = "start";
         ctx.textBaseline = "alphabetic";
         ctx.globalAlpha = 1;
 
         const statusBubble = u.status === "Needs JB" ? "!" : u.status === "Waiting approval" ? "…" : u.status === "Blocked" ? "x" : u.status === "Working" ? "*" : "-";
         ctx.fillStyle = "#111827";
-        ctx.fillRect(px - 6, sy - 48, 12, 10);
+        ctx.fillRect(px - q(6), sy - q(48), q(12), q(10));
         ctx.strokeStyle = statusColor(u.status);
-        ctx.strokeRect(px - 6, sy - 48, 12, 10);
+        ctx.strokeRect(px - q(6), sy - q(48), q(12), q(10));
         ctx.fillStyle = "#e5e7eb";
-        ctx.font = "8px monospace";
-        ctx.fillText(statusBubble, px - 2, sy - 40);
+        ctx.font = `${q(6)}px monospace`;
+        ctx.fillText(statusBubble, px - q(2), sy - q(40));
+
+        // JB-office queue stance markers
+        if (u.status === "Needs JB" || u.status === "Waiting approval" || u.status === "Blocked") {
+          ctx.fillStyle = u.status === "Blocked" ? "#ef4444" : u.status === "Needs JB" ? "#facc15" : "#fb923c";
+          ctx.fillRect(px - q(9), sy + q(6), q(18), q(2));
+        }
 
         ctx.fillStyle = "rgba(2,6,23,0.9)";
-        ctx.fillRect(px - 22, sy + 5, 44, 10);
+        ctx.fillRect(px - q(22), sy + q(5), q(44), q(10));
         ctx.fillStyle = "#e2e8f0";
-        ctx.font = "8px monospace";
-        ctx.fillText(u.codename.slice(0, 10), px - 20, sy + 13);
+        ctx.font = `${q(6)}px monospace`;
+        ctx.fillText(u.codename.slice(0, 10), px - q(20), sy + q(13));
       });
 
       particlesRef.current.forEach((p) => {
