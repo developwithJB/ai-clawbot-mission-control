@@ -120,24 +120,56 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
     g.fillStyle = "#020617";
     g.fillRect(0, 0, WORLD_W, WORLD_H);
 
+    // Floor tiles (warmer, office-like palette)
     for (let y = 0; y < WORLD_H; y += TILE) {
       for (let x = 0; x < WORLD_W; x += TILE) {
         const isAlt = ((x / TILE) + (y / TILE)) % 2 === 0;
-        g.fillStyle = isAlt ? "#0b1220" : "#0a1020";
+        g.fillStyle = isAlt ? "#111827" : "#0f172a";
         g.fillRect(x, y, TILE, TILE);
       }
     }
 
+    // Hallway carpet strips to break up grid / add room identity
+    g.fillStyle = "#1f2937";
+    g.fillRect(3 * TILE, 14 * TILE, 66 * TILE, 3 * TILE);
+    g.fillRect(18 * TILE, 3 * TILE, 3 * TILE, 35 * TILE);
+
+    // Outer walls
+    g.strokeStyle = "#334155";
+    g.lineWidth = 4;
+    g.strokeRect(2 * TILE, 2 * TILE, 68 * TILE, 40 * TILE);
+
+    // Windows (top wall)
+    for (let i = 0; i < 7; i += 1) {
+      g.fillStyle = "#0ea5e9";
+      g.fillRect((6 + i * 9) * TILE, 2 * TILE, 5 * TILE, 1 * TILE);
+      g.fillStyle = "rgba(186,230,253,0.45)";
+      g.fillRect((6 + i * 9) * TILE, 2 * TILE, 5 * TILE, 0.5 * TILE);
+    }
+
     Object.values(ZONES).forEach((z) => {
-      g.fillStyle = "#0f172a";
+      // desk cluster area
+      g.fillStyle = "#0b1220";
       g.fillRect(z.x, z.y, z.w, z.h);
-      g.strokeStyle = "#1e293b";
+      g.strokeStyle = "#334155";
       g.lineWidth = 2;
       g.strokeRect(z.x, z.y, z.w, z.h);
-      for (let i = 0; i < 3; i += 1) {
-        g.fillStyle = "#111827";
-        g.fillRect(z.x + 8 + i * 20, z.y + z.h - 16, 12, 8);
-      }
+
+      // desk furniture
+      g.fillStyle = "#475569";
+      g.fillRect(z.x + 6, z.y + z.h - 14, z.w - 12, 8);
+      g.fillStyle = "#1e293b";
+      g.fillRect(z.x + 8, z.y + z.h - 12, z.w - 16, 4);
+
+      // monitor glow blocks
+      g.fillStyle = "rgba(56,189,248,0.35)";
+      g.fillRect(z.x + z.w / 2 - 8, z.y + z.h - 20, 16, 6);
+
+      // plant / decor pixel
+      g.fillStyle = "#16a34a";
+      g.fillRect(z.x + 4, z.y + 4, 4, 4);
+      g.fillStyle = "#14532d";
+      g.fillRect(z.x + 4, z.y + 8, 4, 2);
     });
 
     bgRef.current = bg;
@@ -321,9 +353,13 @@ export function PixelOfficeView({ units, recentActivity, approvals }: Props) {
         const frameNudge = actor.frame % 2 === 0 ? 0 : 1;
         ctx.fillRect(px - 5 + frameNudge, Math.floor(py - 12 + bob), 10, 10);
 
-        ctx.fillStyle = "#f8fafc";
-        ctx.fillRect(px - 3, Math.floor(py - 13 + bob), 2, 2);
-        ctx.fillRect(px + 1, Math.floor(py - 13 + bob), 2, 2);
+        // Employee identity is their associated emoji (required)
+        ctx.font = "10px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(u.icon, px, Math.floor(py - 7 + bob));
+        ctx.textAlign = "start";
+        ctx.textBaseline = "alphabetic";
         ctx.globalAlpha = 1;
 
         const statusBubble = u.status === "Needs JB" ? "!" : u.status === "Waiting approval" ? "…" : u.status === "Blocked" ? "x" : u.status === "Working" ? "*" : "-";
